@@ -1,0 +1,182 @@
+[project]
+name = "vtuber-reception-system"
+version = "0.1.0"
+description = "VTuber Hotel Reception System - Remote reception service using avatar"
+authors = [{ name = "kathmandu777", email = "mahhakatomanato@gmail.com" }]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "celery[redis]>=5.3.0",
+    "redis>=5.0.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "websockets>=12.0",
+    "obsws-python>=1.6.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy>=2.0.0",
+    "httpx>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "tenacity>=8.2.0",
+    "structlog>=23.2.0",
+    "aiofiles>=23.2.0",
+    "python-multipart>=0.0.6",
+    "click>=8.1.0",
+    "google-apps-meet>=0.1.16",
+]
+readme = "README.md"
+license = { text = "Proprietary" }
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "freezegun>=1.2.0",
+    "ruff>=0.1.0",
+    "pyright>=1.1.0",
+    "coverage[toml]>=7.3.0",
+    "pre-commit>=3.5.0",
+    "ipython>=8.17.0",
+    "rich>=13.7.0",
+]
+
+[project.scripts]
+reception = "src.cli:main"
+frontend = "src.frontend.main:run"
+backend = "src.backend.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "freezegun>=1.2.0",
+    "ruff>=0.1.0",
+    "pyright>=1.1.0",
+    "coverage[toml]>=7.3.0",
+    "pre-commit>=3.5.0",
+    "ipython>=8.17.0",
+    "rich>=13.7.0",
+]
+
+[tool.rye.scripts]
+# 開発サーバー
+dev = "uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000"
+frontend-dev = "python -m src.frontend.main --debug"
+
+# テスト
+test = "pytest -v"
+test-cov = "pytest --cov=src --cov-report=term-missing --cov-report=html"
+
+# リント・フォーマット
+lint = "ruff check ."
+format = "ruff format ."
+typecheck = "pyright"
+
+# ドキュメント
+docs = "python -m mkdocs serve"
+
+# デバッグ
+debug-meet = "python -m src.debug.test_meet_api"
+debug-vtube = "python -m src.debug.test_vtube"
+debug-obs = "python -m src.debug.test_obs"
+health-check = "python -m src.debug.health_check"
+
+# Celeryワーカー
+worker = "celery -A src.tasks.app worker --loglevel=info"
+beat = "celery -A src.tasks.app beat --loglevel=info"
+flower = "celery -A src.tasks.app flower"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101", "S105"]  # assert使用とハードコードされたパスワードを許可
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__", ".venv"]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportOptionalSubscript = false
+reportOptionalMemberAccess = false
+reportGeneralTypeIssues = true
+reportOptionalOperand = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-ra",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
