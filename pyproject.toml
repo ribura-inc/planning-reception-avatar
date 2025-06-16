@@ -25,6 +25,8 @@ dependencies = [
     "python-multipart>=0.0.6",
     "click>=8.1.0",
     "google-apps-meet>=0.1.16",
+    "selenium>=4.33.0",
+    "pyautogui>=0.9.54",
 ]
 readme = "README.md"
 license = { text = "Proprietary" }

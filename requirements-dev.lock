@@ -22,6 +22,9 @@ anyio==4.9.0
     # via watchfiles
 asttokens==3.0.0
     # via stack-data
+attrs==25.3.0
+    # via outcome
+    # via trio
 billiard==4.2.1
     # via celery
 cachetools==5.5.2
@@ -32,6 +35,7 @@ certifi==2025.6.15
     # via httpcore
     # via httpx
     # via requests
+    # via selenium
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.2
@@ -92,6 +96,7 @@ grpcio-status==1.73.0
 h11==0.16.0
     # via httpcore
     # via uvicorn
+    # via wsproto
 httpcore==1.0.9
     # via httpx
 httplib2==0.22.0
@@ -107,6 +112,7 @@ idna==3.10
     # via anyio
     # via httpx
     # via requests
+    # via trio
 iniconfig==2.1.0
     # via pytest
 ipython==9.3.0
@@ -122,6 +128,8 @@ matplotlib-inline==0.1.7
     # via ipython
 mdurl==0.1.2
     # via markdown-it-py
+mouseinfo==0.1.3
+    # via pyautogui
 nodeenv==1.9.1
     # via pre-commit
     # via pyright
@@ -129,6 +137,9 @@ oauthlib==3.2.2
     # via requests-oauthlib
 obsws-python==1.7.2
     # via vtuber-reception-system
+outcome==1.3.0.post0
+    # via trio
+    # via trio-websocket
 packaging==25.0
     # via kombu
     # via pytest
@@ -163,6 +174,8 @@ pyasn1==0.6.1
     # via rsa
 pyasn1-modules==0.4.2
     # via google-auth
+pyautogui==0.9.54
+    # via vtuber-reception-system
 pydantic==2.11.7
     # via fastapi
     # via pydantic-settings
@@ -171,14 +184,34 @@ pydantic-core==2.33.2
     # via pydantic
 pydantic-settings==2.9.1
     # via vtuber-reception-system
+pygetwindow==0.0.9
+    # via pyautogui
 pygments==2.19.1
     # via ipython
     # via ipython-pygments-lexers
     # via pytest
     # via rich
+pymsgbox==1.0.9
+    # via pyautogui
+pyobjc-core==11.1
+    # via pyautogui
+    # via pyobjc-framework-cocoa
+    # via pyobjc-framework-quartz
+pyobjc-framework-cocoa==11.1
+    # via pyobjc-framework-quartz
+pyobjc-framework-quartz==11.1
+    # via pyautogui
 pyparsing==3.2.3
     # via httplib2
+pyperclip==1.9.0
+    # via mouseinfo
+pyrect==0.2.0
+    # via pygetwindow
 pyright==1.1.402
+pyscreeze==1.0.1
+    # via pyautogui
+pysocks==1.7.1
+    # via urllib3
 pytest==8.4.0
     # via pytest-asyncio
     # via pytest-cov
@@ -195,6 +228,8 @@ python-dotenv==1.1.0
     # via vtuber-reception-system
 python-multipart==0.0.20
     # via vtuber-reception-system
+pytweening==1.2.0
+    # via pyautogui
 pyyaml==6.0.2
     # via pre-commit
     # via uvicorn
@@ -209,11 +244,18 @@ requests-oauthlib==2.0.0
 rich==14.0.0
 rsa==4.9.1
     # via google-auth
+rubicon-objc==0.5.1
+    # via mouseinfo
 ruff==0.11.13
+selenium==4.33.0
+    # via vtuber-reception-system
 six==1.17.0
     # via python-dateutil
 sniffio==1.3.1
     # via anyio
+    # via trio
+sortedcontainers==2.4.0
+    # via trio
 sqlalchemy==2.0.41
     # via vtuber-reception-system
 stack-data==0.6.3
@@ -227,12 +269,18 @@ tenacity==9.1.2
 traitlets==5.14.3
     # via ipython
     # via matplotlib-inline
-typing-extensions==4.14.0
+trio==0.30.0
+    # via selenium
+    # via trio-websocket
+trio-websocket==0.12.2
+    # via selenium
+typing-extensions==4.13.2
     # via anyio
     # via fastapi
     # via pydantic
     # via pydantic-core
     # via pyright
+    # via selenium
     # via sqlalchemy
     # via typing-inspection
 typing-inspection==0.4.1
@@ -244,6 +292,7 @@ uritemplate==4.2.0
     # via google-api-python-client
 urllib3==2.4.0
     # via requests
+    # via selenium
 uvicorn==0.34.3
     # via vtuber-reception-system
 uvloop==0.21.0
@@ -260,6 +309,9 @@ wcwidth==0.2.13
     # via prompt-toolkit
 websocket-client==1.8.0
     # via obsws-python
+    # via selenium
 websockets==15.0.1
     # via uvicorn
     # via vtuber-reception-system
+wsproto==1.2.0
+    # via trio-websocket
