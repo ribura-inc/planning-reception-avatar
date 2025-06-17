@@ -51,7 +51,7 @@ class GoogleMeetAutoJoiner:
         # ユーザープロファイルの設定（ログイン状態を保持）
         if self.use_profile:
             # プロファイルディレクトリを作成
-            profile_dir = Path(__file__).parent.parent.parent / ".chrome-profile"
+            profile_dir = Path(__file__).parent.parent.parent / ".chrome-profile-front"
             profile_dir.mkdir(parents=True, exist_ok=True)
 
             options.add_argument(f"--user-data-dir={profile_dir}")
