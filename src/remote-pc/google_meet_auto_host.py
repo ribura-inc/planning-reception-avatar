@@ -41,8 +41,15 @@ XPATH_GEMINI_JOIN = (
     "//span[contains(text(), '今すぐ参加') or contains(text(), 'Join now')]/.."
 )
 XPATH_AUTO_ADMIT_BUTTON = [
-    "//div[@class='r6xAKc btn-auto-admit']//button[@aria-label='Toggle Auto-Admit']",
     "//button[@aria-label='Toggle Auto-Admit']",
+]
+
+# Chrome Web Store XPath定義
+XPATH_REMOVE_BUTTON = [
+    "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/..",
+]
+XPATH_ADD_BUTTON = [
+    "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/..",
 ]
 
 
@@ -185,37 +192,71 @@ class GoogleMeetAutoHost:
         if not self.driver:
             return
 
-        # 拡張機能がインストールされているかチェック
-        self.driver.get("chrome://extensions/")
-        time.sleep(2)
+        print("Auto-Admit拡張機能のインストール状況を確認しています...")
+
+        # 拡張機能のChrome Web Storeページを開く
+        self.driver.get(AUTO_ADMIT_EXTENSION_URL)
+        time.sleep(3)
 
         # 拡張機能が既にインストールされているか確認
-        extensions_installed = self.driver.execute_script(
-            """
-            const extensions = await chrome.management.getAll();
-            return extensions.some(ext => ext.id === arguments[0]);
-            """,
-            AUTO_ADMIT_EXTENSION_ID,
-        )
+        is_installed = False
 
-        if not extensions_installed:
-            print("Auto-Admit拡張機能をインストールしています...")
-            # Chrome Web Storeを開く
-            self.driver.get(AUTO_ADMIT_EXTENSION_URL)
-            time.sleep(PAGE_LOAD_WAIT)
-
-            # 「Chromeに追加」ボタンをクリック
+        # 「Chromeから削除」ボタンがあるかチェック
+        for xpath in XPATH_REMOVE_BUTTON:
             try:
-                add_button = WebDriverWait(self.driver, BUTTON_WAIT_TIMEOUT).until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, "//button[contains(text(), 'Chromeに追加')]")
-                    )
+                WebDriverWait(self.driver, 3).until(
+                    EC.presence_of_element_located((By.XPATH, xpath))
                 )
-                add_button.click()
-                print("拡張機能をインストールしました")
-                time.sleep(EXTENSION_LOAD_WAIT)
+                is_installed = True
+                break
             except TimeoutException:
-                print("拡張機能は既にインストールされている可能性があります")
+                continue
+
+        if is_installed:
+            print("Auto-Admit拡張機能は既にインストールされています")
+            return
+
+        # インストールされていない場合、インストールを実行
+        print("Auto-Admit拡張機能をインストールしています...")
+
+        add_button = None
+        for xpath in XPATH_ADD_BUTTON:
+            try:
+                add_button = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath))
+                )
+                break
+            except TimeoutException:
+                continue
+
+        if add_button:
+            add_button.click()
+            print("「Chromeに追加」ボタンをクリックしました")
+
+            # Chromeの拡張機能インストール確認ポップアップを処理
+            try:
+                # アラートダイアログを受け入れる
+                alert = WebDriverWait(self.driver, 10).until(EC.alert_is_present())
+                alert.accept()  # FIXME: うまく行かないので手動対応必要 → 一度行えばプロファイルに設定されるはず
+                print("拡張機能のインストールを確認しました")
+
+                # インストール完了まで待機
+                time.sleep(3)
+                print("Auto-Admit拡張機能のインストールが完了しました")
+
+            except TimeoutException:
+                print(
+                    "確認ダイアログが見つかりませんでした。手動でインストールを完了してください。"
+                )
+                print(
+                    "ブラウザで確認ダイアログが表示された場合は、「拡張機能を追加」をクリックしてください。"
+                )
+                input("インストール完了後、Enterキーを押してください: ")
+
+        else:
+            print("「Chromeに追加」ボタンが見つかりませんでした")
+            print("手動で拡張機能をインストールしてください")
+            input("インストール完了後、Enterキーを押してください: ")
 
     def join_meeting_as_host(self, meet_url: str):
         """Google Meetにホストとして参加"""
@@ -308,13 +349,13 @@ class GoogleMeetAutoHost:
             self.ensure_google_login()
 
             # # 4. 拡張機能をインストール（必要な場合）
-            # self.install_extension_if_needed()
+            self.install_extension_if_needed()
 
             # # 5. Meetに参加
-            # self.join_meeting_as_host(self.meet_url)
+            self.join_meeting_as_host(self.meet_url)
 
             # # 6. Auto-Admit機能を有効化
-            # self.enable_auto_admit()
+            self.enable_auto_admit()
 
             print(f"\n会議をホスト中です。Meet URL: {self.meet_url}")
             print("終了するにはCtrl+Cを押してください。")

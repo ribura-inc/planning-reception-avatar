@@ -176,5 +176,6 @@ cython_debug/
 # Google Meet API
 token.json
 credentials.json
+.chrome-extension/
 .chrome-profile/
 .chrome-profile-remote/
