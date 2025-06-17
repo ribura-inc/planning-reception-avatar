@@ -136,82 +136,36 @@ class GoogleMeetAutoHost:
 
         self.driver = webdriver.Chrome(options=options)
 
-    def get_authenticated_email(self) -> str | None:
-        """認証情報からメールアドレスを取得"""
-        if not self.creds:
-            return None
-
-        try:
-            # 認証情報を使ってユーザー情報APIを呼び出し
-            import requests
-
-            if self.creds.token:
-                # OAuth2トークンを使ってユーザー情報を取得
-                headers = {"Authorization": f"Bearer {self.creds.token}"}
-                response = requests.get(
-                    "https://www.googleapis.com/oauth2/v2/userinfo", headers=headers
-                )
-                if response.status_code == 200:
-                    user_info = response.json()
-                    return user_info.get("email")
-        except Exception as e:
-            print(f"メールアドレス取得エラー: {e}")
-
-        return None
-
     def ensure_google_login(self):
         """Google Meet API認証と同じアカウントでログインを確認"""
         if not self.driver:
             return
 
-        # 認証されたメールアドレスを取得
-        target_email = self.get_authenticated_email()
-        if target_email:
-            print(f"Meet API認証アカウント: {target_email}")
-
         print("Googleアカウントへのログイン状態を確認しています...")
 
         # Googleアカウントページを開いてログイン状態を確認
-        self.driver.get("https://accounts.google.com/")
+        self.driver.get("https://myaccount.google.com/")
         time.sleep(3)
 
         # ログインしているかチェック
         try:
             # 現在ログインしているアカウントのメールアドレスを取得
             current_url = self.driver.current_url
-            if "accounts.google.com" in current_url and "signin" not in current_url:
+            if "myaccount.google.com" in current_url and "signin" not in current_url:
                 # アカウント情報を取得するためにMyAccountページに移動
                 self.driver.get("https://myaccount.google.com/")
                 time.sleep(3)
 
-                # ログインしているメールアドレスを取得
+                # メタタグからログインしているメールアドレスを取得
                 try:
-                    email_element = self.driver.find_element(
-                        By.XPATH,
-                        "//div[@data-email] | //div[contains(@class, 'gb_d')] | //div[contains(text(), '@')]",
+                    meta_element = self.driver.find_element(
+                        By.XPATH, "//meta[@name='og-profile-acct']"
                     )
-                    current_email = (
-                        email_element.get_attribute("data-email") or email_element.text
-                    )
+                    current_email = meta_element.get_attribute("content")
 
                     if current_email and "@" in current_email:
                         print(f"現在ログイン中: {current_email}")
-
-                        if (
-                            target_email
-                            and current_email.lower() == target_email.lower()
-                        ):
-                            print("正しいアカウントでログイン済みです")
-                            return True
-                        elif target_email:
-                            print(
-                                f"異なるアカウントでログインしています。{target_email}でログインしてください。"
-                            )
-                        else:
-                            print(
-                                "ログイン済みですが、Meet API認証アカウントが不明です。"
-                            )
-                            return True
+                        return True
                 except Exception:
                     print("Googleアカウントにログイン済みです")
                     return True
@@ -220,24 +174,10 @@ class GoogleMeetAutoHost:
 
         # ログインしていない場合、ログインページに遷移
         print("Googleアカウントにログインしてください...")
-        if target_email:
-            # 特定のメールアドレスでのログインを促す
-            self.driver.get(
-                f"https://accounts.google.com/signin/v2/identifier?email={target_email}"
-            )
-        else:
-            self.driver.get("https://accounts.google.com/signin")
-
-        # ユーザーが手動でログインするまで待機
-        if target_email:
-            print(f"ブラウザで {target_email} アカウントにログインしてください。")
-        else:
-            print(
-                "ブラウザでMeet APIで使用したGoogleアカウントにログインしてください。"
-            )
+        self.driver.get("https://accounts.google.com/signin")
+        print("ブラウザでMeet APIで使用したGoogleアカウントにログインしてください。")
         print("ログイン完了後、Enterキーを押してください...")
         input("Enterキーを押してください: ")
-
         return True
 
     def install_extension_if_needed(self):
@@ -367,14 +307,14 @@ class GoogleMeetAutoHost:
             # 3. Googleアカウントへのログインを確認
             self.ensure_google_login()
 
-            # 4. 拡張機能をインストール（必要な場合）
-            self.install_extension_if_needed()
+            # # 4. 拡張機能をインストール（必要な場合）
+            # self.install_extension_if_needed()
 
-            # 5. Meetに参加
-            self.join_meeting_as_host(self.meet_url)
+            # # 5. Meetに参加
+            # self.join_meeting_as_host(self.meet_url)
 
-            # 6. Auto-Admit機能を有効化
-            self.enable_auto_admit()
+            # # 6. Auto-Admit機能を有効化
+            # self.enable_auto_admit()
 
             print(f"\n会議をホスト中です。Meet URL: {self.meet_url}")
             print("終了するにはCtrl+Cを押してください。")
