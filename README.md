@@ -44,18 +44,4 @@ curl -sSf https://rye.astral.sh/get | bash
 
 # 依存関係のインストール
 rye sync
-
-# 環境変数の設定
-cp .env.example .env
-# .envファイルを編集し、必要な認証情報を設定
-```
-
-## ディレクトリ構造
-
-```
-
-src/
-├── remote-pc/              # リモートPC用ファイル
-│
-├── front-pc/              # フロントPC用ファイル
 ```
