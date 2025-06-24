@@ -108,16 +108,20 @@ class MeetManager:
                 "intl.accept_languages": "ja,en-US,en",
                 "profile.default_content_setting_values.media_stream_mic": 1,
                 "profile.default_content_setting_values.media_stream_camera": 1,
+                "profile.default_content_setting_values.desktop_capture": 1,
                 "profile.default_content_setting_values.geolocation": 0,
                 "profile.default_content_setting_values.notifications": 2,
             },
         )
 
         # その他オプション
-        options.add_argument("--use-fake-ui-for-media-stream")
+        options.add_argument("--enable-usermedia-screen-capturing")
+        # options.add_argument("--use-fake-ui-for-media-stream")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+
+        # ウィンドウサイズ設定
         options.add_argument("--window-size=1920,1080")
 
         self.driver = webdriver.Chrome(options=options)
