@@ -125,7 +125,8 @@ class MeetManager:
 
         # その他オプション
         options.add_argument("--enable-usermedia-screen-capturing")
-        # options.add_argument("--use-fake-ui-for-media-stream")
+        # options.add_argument("--use-fake-ui-for-media-stream") # これは有効にしたらダメ
+        options.add_argument("--auto-select-desktop-capture-source=VTube Studio")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
