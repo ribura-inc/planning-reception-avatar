@@ -60,15 +60,41 @@ class ReceptionController:
             logger.info("Googleアカウントのログインを確認中...")
             self.meet_manager.ensure_google_login()
 
-            # 6. Meetにホストとして参加
+            # 6. 拡張機能の確認
+            logger.info("拡張機能の確認中...")
+
+            # Auto-Admit拡張機能の確認
+            if not self.meet_manager.check_extension(
+                self.meet_manager.AUTO_ADMIT_EXTENSION_URL, "Auto-Admit"
+            ):
+                logger.error("Auto-Admit拡張機能がインストールされていません")
+                logger.error(
+                    f"次のURLから手動でインストールしてください: {self.meet_manager.AUTO_ADMIT_EXTENSION_URL}"
+                )
+                return False
+
+            # Screen Capture Virtual Camera拡張機能の確認
+            if not self.meet_manager.check_extension(
+                self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL,
+                "Screen Capture Virtual Camera",
+            ):
+                logger.error(
+                    "Screen Capture Virtual Camera拡張機能がインストールされていません"
+                )
+                logger.error(
+                    f"次のURLから手動でインストールしてください: {self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL}"
+                )
+                return False
+
+            # 7. Meetにホストとして参加
             logger.info("Meetにホストとして参加中...")
             self.meet_manager.join_as_host(self.current_meet_url)
 
-            # 7. Auto-Admit機能有効化
+            # 8. Auto-Admit機能有効化
             logger.info("Auto-Admit機能を有効化中...")
             self.meet_manager.enable_auto_admit()
 
-            # 8. フロントPCに準備完了通知
+            # 9. フロントPCに準備完了通知
             self.communication_client.send_notification("受付システム準備完了")
 
             logger.info("受付セッションの開始が完了しました")

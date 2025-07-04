@@ -29,8 +29,9 @@ class MeetManager:
     PAGE_LOAD_WAIT = 5
     BUTTON_WAIT_TIMEOUT = 10
 
-    # Auto-Admit拡張機能情報
+    # 拡張機能情報
     AUTO_ADMIT_EXTENSION_URL = "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
+    SCREEN_CAPTURE_EXTENSION_URL = "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc"
 
     # XPath定義
     XPATH_JOIN_BUTTON = [
@@ -39,6 +40,14 @@ class MeetManager:
         "//button[contains(@aria-label, '参加') or contains(@aria-label, 'Join')]",
     ]
     XPATH_AUTO_ADMIT_BUTTON = ["//button[@aria-label='Toggle Auto-Admit']"]
+
+    # Chrome Web Store XPath定義
+    XPATH_EXTENSION_REMOVE_BUTTON = [
+        "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/..",
+    ]
+    XPATH_EXTENSION_ADD_BUTTON = [
+        "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/..",
+    ]
 
     def __init__(self):
         self.driver: webdriver.Chrome | None = None
@@ -180,6 +189,42 @@ class MeetManager:
                 print("Auto-Admit機能は既に有効です")
         else:
             print("Auto-Admitボタンが見つかりませんでした")
+
+    def check_extension(self, extension_url: str, extension_name: str) -> bool:
+        """拡張機能がインストールされているか確認"""
+        if not self.driver:
+            return False
+
+        print(f"{extension_name}拡張機能の確認中...")
+
+        # 拡張機能ページを開く
+        self.driver.get(extension_url)
+        time.sleep(3)
+
+        # 「Chrome から削除」ボタンが存在するかチェック（インストール済みの場合）
+        for xpath in self.XPATH_EXTENSION_REMOVE_BUTTON:
+            try:
+                WebDriverWait(self.driver, 3).until(
+                    expected_conditions.presence_of_element_located((By.XPATH, xpath))
+                )
+                print(f"{extension_name}拡張機能は既にインストールされています")
+                return True
+            except TimeoutException:
+                continue
+
+        # 「Chrome に追加」ボタンが存在するかチェック（未インストールの場合）
+        for xpath in self.XPATH_EXTENSION_ADD_BUTTON:
+            try:
+                WebDriverWait(self.driver, 3).until(
+                    expected_conditions.presence_of_element_located((By.XPATH, xpath))
+                )
+                print(f"{extension_name}拡張機能がインストールされていません")
+                return False
+            except TimeoutException:
+                continue
+
+        print(f"{extension_name}拡張機能の状態を確認できませんでした")
+        return False
 
     def ensure_google_login(self) -> bool:
         """Googleアカウントへのログイン確認"""
