@@ -35,7 +35,7 @@ class CommunicationServer:
 
         # メッセージハンドラー
         self.message_handlers: dict[str, Callable[[dict[str, Any]], None]] = {}
-        
+
         # クライアント接続管理
         self.clients: set[tuple[socket.socket, tuple]] = set()
         self._clients_lock = threading.Lock()
@@ -121,7 +121,7 @@ class CommunicationServer:
         with self._clients_lock:
             self.clients.add((client_socket, client_address))
         logger.info(f"クライアント接続追加: {client_address} (総数: {len(self.clients)})")
-        
+
         try:
             client_socket.settimeout(30)  # 30秒タイムアウト
 

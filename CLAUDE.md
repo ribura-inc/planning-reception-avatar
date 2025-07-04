@@ -11,16 +11,70 @@
 ```mermaid
 graph LR
     フロントPC[フロントPC<br>(受付端末)] --> GoogleMeet[Google Meet<br>(通信基盤)]
-    オペレーターPC[オペレーターPC<br>(制御端末)] --> GoogleMeet
-    オペレーターPC --> VTubeStudio[VTube Studio<br>(アバター制御)]
+    リモートPC[リモートPC<br>(制御端末)] --> GoogleMeet
+    リモートPC --> VTubeStudio[VTube Studio<br>(アバター制御)]
+    リモートPC -.-> Tailscale[Tailscale<br>(P2P通信)]
+    フロントPC -.-> Tailscale
 ```
 
 ## 主要機能
 
-1. **自動接続管理**: Google Meetの24時間制限と熱対策を考慮した接続制御
-2. **ワンクリック起動**: オペレーター側からの簡単な呼び出し
-3. **アバター連携**: VTube Studioを使用したリアルタイム表情・動作制御
-4. **画面共有**: 館内案内や資料表示
+1. **完全自動起動**: リモートPCのIPまたは名前指定だけで全自動起動
+2. **VTube Studio自動起動**: 未起動時は自動でVTube Studioを起動
+3. **高速接続**: 最適化された通信で2秒以内の接続確立
+4. **自動終了連動**: リモートPCでChrome終了時、フロントPCも自動終了
+5. **プロセス監視**: 異常終了時の自動クリーンアップ
+6. **Tailscale統合**: P2P通信による安全で高速な接続
+
+## 使用方法
+
+### 基本的な使用手順
+
+1. **フロントPC起動** (一度起動すれば常時待機)
+
+   ```bash
+   python src/front/main.py
+   ```
+
+2. **リモートPC起動** (フロントPCのIPまたは名前のみ指定)
+
+   ```bash
+   # IPアドレス指定
+   python src/remote/main.py 192.168.1.100
+   
+   # Tailscaleデバイス名指定
+   python src/remote/main.py front-pc-name
+   ```
+
+### 高度なオプション
+
+```bash
+# 拡張機能チェックをスキップ
+python src/remote/main.py front-pc-name --skip-extension-check
+
+# Googleアカウントチェックをスキップ  
+python src/remote/main.py front-pc-name --skip-account-check
+```
+
+## 自動化フロー
+
+### リモートPC側
+
+1. VTube Studio自動起動確認
+2. Meet URL生成
+3. フロントPCへ自動接続（最適化済み）
+4. Meet URL送信
+5. Chrome起動・Meet参加
+6. プロセス監視開始
+7. 終了時自動クリーンアップ
+
+### フロントPC側
+
+1. 常時待機モード
+2. Meet URL自動受信
+3. Chrome自動起動・Meet参加
+4. プロセス監視開始
+5. 終了コマンド受信時自動クリーンアップ
 
 ## セットアップ
 
@@ -28,9 +82,12 @@ graph LR
 
 - Python 3.11以上
 - Rye (パッケージ管理)
-- Screen Virtual Capture Camera（Chromeの拡張機能）
-- VTube Studio（アバター制御）
+- Chrome + 拡張機能:
+  - Auto-Admit for Google Meet
+  - Screen Capture Virtual Camera
+- VTube Studio（macOS版）
 - Google Cloud Project (Meet API用)
+- Tailscale (デバイス名指定時)
 
 ### インストール
 
@@ -45,17 +102,39 @@ curl -sSf https://rye.astral.sh/get | bash
 # 依存関係のインストール
 rye sync
 
-# 環境変数の設定
-cp .env.example .env
-# .envファイルを編集し、必要な認証情報を設定
+# 認証情報の設定
+# Google Cloud Consoleからcredentials.jsonをダウンロードしてプロジェクトルートに配置
 ```
+
+### Chrome拡張機能
+
+以下の拡張機能が必要です：
+
+1. **Auto-Admit for Google Meet**
+   - URL: <https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb>
+   - 機能: 参加者の自動承認
+
+2. **Screen Capture Virtual Camera**
+   - URL: <https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc>
+   - 機能: VTube Studioの映像をカメラとして使用
 
 ## ディレクトリ構造
 
 ```
-
 src/
-├── remote-pc/              # リモートPC用ファイル
-│
-├── front-pc/              # フロントPC用ファイル
+├── remote/                    # リモートPC用
+│   ├── main.py               # メインエントリーポイント
+│   ├── reception_controller.py # 受付制御
+│   ├── meet_manager.py       # Meet管理
+│   ├── communication_client.py # 通信クライアント
+│   └── communication_client_optimized.py # 最適化通信
+├── front/                     # フロントPC用
+│   ├── main.py               # メインエントリーポイント
+│   ├── reception_handler.py  # 受付ハンドラー
+│   ├── meet_participant.py   # Meet参加者
+│   └── communication_server.py # 通信サーバー
+├── utils/                     # 共通ユーティリティ
+│   ├── tailscale_utils.py    # Tailscale関連
+│   └── vtube_studio_utils.py # VTube Studio関連
+└── config.py                # 設定ファイル
 ```

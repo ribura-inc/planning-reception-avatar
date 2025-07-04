@@ -3,10 +3,13 @@ Google Meet管理クラス（リモートPC用）
 Meet URLの生成、ホストとしての参加、Auto-Admit機能の制御を行う
 """
 
+import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import psutil
 from google.apps import meet_v2
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -17,6 +20,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
+
+from ..config import Config
 
 
 class MeetManager:
@@ -33,22 +38,6 @@ class MeetManager:
     AUTO_ADMIT_EXTENSION_URL = "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
     SCREEN_CAPTURE_EXTENSION_URL = "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc"
 
-    # XPath定義
-    XPATH_JOIN_BUTTON = [
-        "//span[contains(text(), '今すぐ参加') or contains(text(), 'Join now')]/..",
-        "//span[contains(text(), '参加') or contains(text(), 'Join')]/..",
-        "//button[contains(@aria-label, '参加') or contains(@aria-label, 'Join')]",
-    ]
-    XPATH_AUTO_ADMIT_BUTTON = ["//button[@aria-label='Toggle Auto-Admit']"]
-
-    # Chrome Web Store XPath定義
-    XPATH_EXTENSION_REMOVE_BUTTON = [
-        "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/..",
-    ]
-    XPATH_EXTENSION_ADD_BUTTON = [
-        "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/..",
-    ]
-
     def __init__(self):
         self.driver: webdriver.Chrome | None = None
         self.meet_url: str | None = None
@@ -56,6 +45,10 @@ class MeetManager:
         self.profile_dir = (
             Path(__file__).parent.parent.parent / ".chrome-profile-remote"
         )
+        self._process_monitor_thread: threading.Thread | None = None
+        self._monitoring = False
+        self._on_chrome_exit_callback: Callable[[], None] | None = None
+        self._chrome_pid: int | None = None
 
     def create_meet_space(self) -> str:
         """Google Meet APIを使用して新しいMeetスペースを作成"""
@@ -136,6 +129,20 @@ class MeetManager:
 
         self.driver = webdriver.Chrome(options=options)
 
+        # ChromeのPIDを取得
+        try:
+            # ChromeDriverのPIDから実際のChromeプロセスを特定
+            if hasattr(self.driver.service, "process"):
+                driver_pid = self.driver.service.process.pid
+                # ChromeDriverの子プロセスとしてChromeを探す
+                parent_process = psutil.Process(driver_pid)
+                for child in parent_process.children(recursive=True):
+                    if "chrome" in child.name().lower():
+                        self._chrome_pid = child.pid
+                        break
+        except Exception as e:
+            print(f"Chrome PID取得エラー: {e}")
+
     def join_as_host(self, meet_url: str) -> None:
         """Meetにホストとして参加"""
         if not self.driver:
@@ -147,14 +154,14 @@ class MeetManager:
 
         # 参加ボタンをクリック
         join_button = None
-        for xpath in self.XPATH_JOIN_BUTTON:
-            try:
-                join_button = WebDriverWait(
-                    self.driver, self.BUTTON_WAIT_TIMEOUT
-                ).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
-                break
-            except TimeoutException:
-                continue
+        try:
+            join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, Config.GoogleMeet.JOIN_BUTTON_XPATH)
+                )
+            )
+        except TimeoutException:
+            join_button = None
 
         if join_button:
             join_button.click()
@@ -172,14 +179,16 @@ class MeetManager:
         time.sleep(5)
 
         auto_admit_button = None
-        for xpath in self.XPATH_AUTO_ADMIT_BUTTON:
-            try:
-                auto_admit_button = WebDriverWait(
-                    self.driver, self.BUTTON_WAIT_TIMEOUT
-                ).until(expected_conditions.element_to_be_clickable((By.XPATH, xpath)))
-                break
-            except TimeoutException:
-                continue
+        try:
+            auto_admit_button = WebDriverWait(
+                self.driver, self.BUTTON_WAIT_TIMEOUT
+            ).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, Config.GoogleMeet.AUTO_ADMIT_BUTTON_XPATH)
+                )
+            )
+        except TimeoutException:
+            auto_admit_button = None
 
         if auto_admit_button:
             is_pressed = auto_admit_button.get_attribute("aria-pressed") == "true"
@@ -203,26 +212,28 @@ class MeetManager:
         time.sleep(3)
 
         # 「Chrome から削除」ボタンが存在するかチェック（インストール済みの場合）
-        for xpath in self.XPATH_EXTENSION_REMOVE_BUTTON:
-            try:
-                WebDriverWait(self.driver, 3).until(
-                    expected_conditions.presence_of_element_located((By.XPATH, xpath))
+        try:
+            WebDriverWait(self.driver, 3).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, Config.ChromeExtension.REMOVE_BUTTON_XPATH)
                 )
-                print(f"{extension_name}拡張機能は既にインストールされています")
-                return True
-            except TimeoutException:
-                continue
+            )
+            print(f"{extension_name}拡張機能は既にインストールされています")
+            return True
+        except TimeoutException:
+            pass
 
         # 「Chrome に追加」ボタンが存在するかチェック（未インストールの場合）
-        for xpath in self.XPATH_EXTENSION_ADD_BUTTON:
-            try:
-                WebDriverWait(self.driver, 3).until(
-                    expected_conditions.presence_of_element_located((By.XPATH, xpath))
+        try:
+            WebDriverWait(self.driver, 3).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, Config.ChromeExtension.ADD_BUTTON_XPATH)
                 )
-                print(f"{extension_name}拡張機能がインストールされていません")
-                return False
-            except TimeoutException:
-                continue
+            )
+            print(f"{extension_name}拡張機能がインストールされていません")
+            return False
+        except TimeoutException:
+            pass
 
         print(f"{extension_name}拡張機能の状態を確認できませんでした")
         return False
@@ -265,17 +276,84 @@ class MeetManager:
                 return False
 
             # ページが会議画面から外れていないかチェック（ホーム画面に戻る ってソースにあるか）
-            if "ホーム画面に戻る" in self.driver.page_source:
-                return False
-
-            return True
+            return Config.GoogleMeet.HOME_BUTTON_TEXT not in self.driver.page_source
 
         except Exception:
             # ChromeDriverが終了している場合やその他のエラー
             return False
 
+    def set_chrome_exit_callback(self, callback: Callable[[], None]) -> None:
+        """Chrome終了時のコールバックを設定"""
+        self._on_chrome_exit_callback = callback
+
+    def start_process_monitoring(self) -> None:
+        """Chromeプロセスの監視を開始"""
+        if not self._monitoring:
+            self._monitoring = True
+            self._process_monitor_thread = threading.Thread(
+                target=self._monitor_chrome_process, daemon=True
+            )
+            self._process_monitor_thread.start()
+            print("Chromeプロセス監視を開始しました")
+
+    def stop_process_monitoring(self) -> None:
+        """Chromeプロセスの監視を停止"""
+        self._monitoring = False
+        if self._process_monitor_thread and self._process_monitor_thread.is_alive():
+            self._process_monitor_thread.join(timeout=2)
+        print("Chromeプロセス監視を停止しました")
+
+    def _monitor_chrome_process(self) -> None:
+        """Chromeプロセスを監視"""
+        while self._monitoring:
+            try:
+                # ドライバーの状態チェック
+                if not self.driver:
+                    print("Chromeドライバーが終了しました")
+                    if self._on_chrome_exit_callback:
+                        self._on_chrome_exit_callback()
+                    break
+
+                # PIDによるプロセス監視
+                if self._chrome_pid:
+                    try:
+                        chrome_process = psutil.Process(self._chrome_pid)
+                        if not chrome_process.is_running():
+                            print(
+                                f"Chromeプロセス (PID: {self._chrome_pid}) が終了しました"
+                            )
+                            if self._on_chrome_exit_callback:
+                                self._on_chrome_exit_callback()
+                            break
+                    except psutil.NoSuchProcess:
+                        print(
+                            f"Chromeプロセス (PID: {self._chrome_pid}) が見つかりません"
+                        )
+                        if self._on_chrome_exit_callback:
+                            self._on_chrome_exit_callback()
+                        break
+
+                # Meetセッション状態チェック
+                if not self.is_session_active():
+                    print("Meetセッションが終了しました")
+                    if self._on_chrome_exit_callback:
+                        self._on_chrome_exit_callback()
+                    break
+
+                time.sleep(2)  # 2秒ごとにチェック
+
+            except Exception as e:
+                print(f"プロセス監視エラー: {e}")
+                time.sleep(5)
+
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
+        self.stop_process_monitoring()
         if self.driver:
-            self.driver.quit()
-            self.driver = None
+            try:
+                self.driver.quit()
+            except Exception as e:
+                print(f"Chrome終了エラー: {e}")
+            finally:
+                self.driver = None
+                self._chrome_pid = None

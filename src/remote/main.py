@@ -18,18 +18,22 @@ from src.remote.reception_controller import ReceptionController  # noqa: E402
 def main():
     """メイン処理"""
     parser = argparse.ArgumentParser(description="VTuber受付システム - リモートPC")
-    parser.add_argument("--front-ip", required=True, help="フロントPCのIPアドレス")
+    parser.add_argument(
+        "front_ip", help="フロントPCのIPアドレスまたはTailscaleデバイス名"
+    )
     parser.add_argument(
         "--skip-extension-check", action="store_true", help="拡張機能チェックをスキップ"
     )
     parser.add_argument(
-        "--skip-account-check", action="store_true", help="Googleアカウントチェックをスキップ"
+        "--skip-account-check",
+        action="store_true",
+        help="Googleアカウントチェックをスキップ",
     )
 
     args = parser.parse_args()
 
     print("=== VTuber受付システム - リモートPC ===")
-    print(f"フロントPC IP: {args.front_ip}")
+    print(f"フロントPC: {args.front_ip}")
 
     if args.skip_extension_check:
         print("注意: 拡張機能チェックをスキップします")
@@ -42,7 +46,7 @@ def main():
         args.front_ip,
         9999,
         skip_extension_check=args.skip_extension_check,
-        skip_account_check=args.skip_account_check
+        skip_account_check=args.skip_account_check,
     )
 
     try:

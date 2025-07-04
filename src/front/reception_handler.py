@@ -72,6 +72,7 @@ class ReceptionHandler:
         logger.info(f"コマンド受信: {command}")
 
         if command == "end_session":
+            logger.info("リモートPCからセッション終了要求を受信")
             self._end_session()
         elif command == "leave_meeting":
             self._leave_meeting()
@@ -81,6 +82,9 @@ class ReceptionHandler:
                 self._join_meeting(meet_url)
             else:
                 logger.error("参加するMeet URLが指定されていません")
+        elif command == "force_cleanup":
+            logger.info("強制クリーンアップ要求を受信")
+            self._force_cleanup()
         else:
             logger.warning(f"未知のコマンド: {command}")
 
@@ -101,14 +105,30 @@ class ReceptionHandler:
             # 新しい参加者インスタンスを作成（ゲストとして参加）
             self.meet_participant = MeetParticipant(display_name=self.display_name)
 
+            # Chrome終了コールバックを設定
+            self.meet_participant.set_chrome_exit_callback(self._handle_chrome_exit)
+
             # Meet参加
             if self.meet_participant.join_meeting(meet_url):
                 logger.info("Meetへの参加が完了しました")
+
+                # Chrome プロセス監視を開始
+                self.meet_participant.start_process_monitoring()
             else:
                 logger.error("Meetへの参加に失敗しました")
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
+
+    def _handle_chrome_exit(self) -> None:
+        """Chrome終了時の処理"""
+        logger.warning("フロントPC側でChromeの終了が検知されました")
+        try:
+            # セッション終了処理
+            self._leave_meeting()
+            self.current_meet_url = None
+        except Exception as e:
+            logger.error(f"Chrome終了処理エラー: {e}")
 
     def _leave_meeting(self) -> None:
         """Meetから退出"""
@@ -127,8 +147,29 @@ class ReceptionHandler:
     def _end_session(self) -> None:
         """セッション終了"""
         logger.info("セッション終了処理を開始...")
-        self._leave_meeting()
-        logger.info("セッション終了処理が完了しました")
+        try:
+            # リモートPCからの終了コマンドによる処理
+            logger.info("リモートPCからの終了要求を受信しました")
+            self._leave_meeting()
+
+            # 現在のMeet URLもクリア
+            self.current_meet_url = None
+
+            logger.info("セッション終了処理が完了しました")
+        except Exception as e:
+            logger.error(f"セッション終了処理エラー: {e}")
+
+    def _force_cleanup(self) -> None:
+        """強制クリーンアップ処理"""
+        logger.info("強制クリーンアップを実行中...")
+        try:
+            if self.meet_participant:
+                self.meet_participant.cleanup()
+                self.meet_participant = None
+            self.current_meet_url = None
+            logger.info("強制クリーンアップが完了しました")
+        except Exception as e:
+            logger.error(f"強制クリーンアップエラー: {e}")
 
     def _start_disconnection_monitoring(self) -> None:
         """切断監視を開始"""
@@ -151,7 +192,9 @@ class ReceptionHandler:
                 if not has_client:
                     if disconnection_time is None:
                         disconnection_time = time.time()
-                        logger.warning("リモートクライアントが切断されました。30秒待機中...")
+                        logger.warning(
+                            "リモートクライアントが切断されました。30秒待機中..."
+                        )
                     elif time.time() - disconnection_time >= 30:
                         logger.info("リモートクライアントが切断されました")
                         self._handle_all_clients_disconnected()

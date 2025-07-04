@@ -6,9 +6,9 @@ Meet URL生成・送信とホスト処理を統合管理する
 import logging
 import time
 
+from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
 from .meet_manager import MeetManager
-from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 
 # ロギング設定
 logging.basicConfig(
@@ -20,10 +20,16 @@ logger = logging.getLogger(__name__)
 class ReceptionController:
     """受付システムのメインコントローラー"""
 
-    def __init__(self, front_pc_ip: str, port: int = 9999, skip_extension_check: bool = False, skip_account_check: bool = False):
+    def __init__(
+        self,
+        front_pc_ip: str,
+        port: int = 9999,
+        skip_extension_check: bool = False,
+        skip_account_check: bool = False,
+    ):
         """
         Args:
-            front_pc_ip: フロントPCのIPアドレス
+            front_pc_ip: フロントPCのIPアドレスまたはTailscaleデバイス名
             port: 通信ポート
             skip_extension_check: 拡張機能チェックをスキップ
             skip_account_check: Googleアカウントチェックをスキップ
@@ -33,13 +39,33 @@ class ReceptionController:
         self.skip_extension_check = skip_extension_check
         self.skip_account_check = skip_account_check
         self.meet_manager = MeetManager()
+
+        # 最適化された通信クライアントを使用（デフォルト）
         self.communication_client = CommunicationClient(front_pc_ip, port)
+
         self.current_meet_url: str | None = None
+        self._session_ended: bool = False
+
+    def _handle_chrome_exit(self) -> None:
+        """Chrome終了時の処理"""
+        logger.info("Chrome終了を検知しました")
+        try:
+            # フロントPCに終了通知を送信
+            if self.communication_client.is_connected():
+                logger.info("フロントPCに終了通知を送信中...")
+                self.communication_client.send_command("end_session")
+                time.sleep(1)  # 送信完了を待つ
+
+            # セッション終了フラグを立てる
+            self._session_ended = True
+        except Exception as e:
+            logger.error(f"Chrome終了処理エラー: {e}")
 
     def start_reception_session(self) -> bool:
         """受付セッションを開始"""
         try:
             logger.info("受付セッションを開始します")
+            self._session_ended = False
 
             # 0. VTube Studio状態確認
             logger.info("VTube Studioの状態を確認中...")
@@ -68,6 +94,9 @@ class ReceptionController:
             # 4. ブラウザセットアップ
             logger.info("ブラウザをセットアップ中...")
             self.meet_manager.setup_browser()
+
+            # Chrome終了時のコールバックを設定
+            self.meet_manager.set_chrome_exit_callback(self._handle_chrome_exit)
 
             # 5. Googleログイン確認
             if not self.skip_account_check:
@@ -113,7 +142,11 @@ class ReceptionController:
             logger.info("Auto-Admit機能を有効化中...")
             self.meet_manager.enable_auto_admit()
 
-            # 9. フロントPCに準備完了通知
+            # 9. Chrome プロセス監視を開始
+            logger.info("Chromeプロセス監視を開始中...")
+            self.meet_manager.start_process_monitoring()
+
+            # 10. フロントPCに準備完了通知
             self.communication_client.send_notification("受付システム準備完了")
 
             logger.info("受付セッションの開始が完了しました")
@@ -133,9 +166,16 @@ class ReceptionController:
             while True:
                 time.sleep(1)
 
-                # Meetセッション状態チェック
+                # セッション終了フラグのチェック
+                if self._session_ended:
+                    logger.info("Chrome終了により自動でセッションを終了します")
+                    break
+
+                # Meetセッション状態チェック（従来の方法も残す）
                 if not self.meet_manager.is_session_active():
-                    logger.info("Chromeが終了またはMeetから退出したため、セッションを終了します")
+                    logger.info(
+                        "Chromeが終了またはMeetから退出したため、セッションを終了します"
+                    )
                     break
 
                 # 通信チェック
