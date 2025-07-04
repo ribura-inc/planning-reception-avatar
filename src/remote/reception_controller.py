@@ -19,14 +19,18 @@ logger = logging.getLogger(__name__)
 class ReceptionController:
     """受付システムのメインコントローラー"""
 
-    def __init__(self, front_pc_ip: str, port: int = 9999):
+    def __init__(self, front_pc_ip: str, port: int = 9999, skip_extension_check: bool = False, skip_account_check: bool = False):
         """
         Args:
             front_pc_ip: フロントPCのIPアドレス
             port: 通信ポート
+            skip_extension_check: 拡張機能チェックをスキップ
+            skip_account_check: Googleアカウントチェックをスキップ
         """
         self.front_pc_ip = front_pc_ip
         self.port = port
+        self.skip_extension_check = skip_extension_check
+        self.skip_account_check = skip_account_check
         self.meet_manager = MeetManager()
         self.communication_client = CommunicationClient(front_pc_ip, port)
         self.current_meet_url: str | None = None
@@ -57,34 +61,40 @@ class ReceptionController:
             self.meet_manager.setup_browser()
 
             # 5. Googleログイン確認
-            logger.info("Googleアカウントのログインを確認中...")
-            self.meet_manager.ensure_google_login()
+            if not self.skip_account_check:
+                logger.info("Googleアカウントのログインを確認中...")
+                self.meet_manager.ensure_google_login()
+            else:
+                logger.info("Googleアカウントチェックをスキップしました")
 
             # 6. 拡張機能の確認
-            logger.info("拡張機能の確認中...")
+            if not self.skip_extension_check:
+                logger.info("拡張機能の確認中...")
 
-            # Auto-Admit拡張機能の確認
-            if not self.meet_manager.check_extension(
-                self.meet_manager.AUTO_ADMIT_EXTENSION_URL, "Auto-Admit"
-            ):
-                logger.error("Auto-Admit拡張機能がインストールされていません")
-                logger.error(
-                    f"次のURLから手動でインストールしてください: {self.meet_manager.AUTO_ADMIT_EXTENSION_URL}"
-                )
-                return False
+                # Auto-Admit拡張機能の確認
+                if not self.meet_manager.check_extension(
+                    self.meet_manager.AUTO_ADMIT_EXTENSION_URL, "Auto-Admit"
+                ):
+                    logger.error("Auto-Admit拡張機能がインストールされていません")
+                    logger.error(
+                        f"次のURLから手動でインストールしてください: {self.meet_manager.AUTO_ADMIT_EXTENSION_URL}"
+                    )
+                    return False
 
-            # Screen Capture Virtual Camera拡張機能の確認
-            if not self.meet_manager.check_extension(
-                self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL,
-                "Screen Capture Virtual Camera",
-            ):
-                logger.error(
-                    "Screen Capture Virtual Camera拡張機能がインストールされていません"
-                )
-                logger.error(
-                    f"次のURLから手動でインストールしてください: {self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL}"
-                )
-                return False
+                # Screen Capture Virtual Camera拡張機能の確認
+                if not self.meet_manager.check_extension(
+                    self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL,
+                    "Screen Capture Virtual Camera",
+                ):
+                    logger.error(
+                        "Screen Capture Virtual Camera拡張機能がインストールされていません"
+                    )
+                    logger.error(
+                        f"次のURLから手動でインストールしてください: {self.meet_manager.SCREEN_CAPTURE_EXTENSION_URL}"
+                    )
+                    return False
+            else:
+                logger.info("拡張機能チェックをスキップしました")
 
             # 7. Meetにホストとして参加
             logger.info("Meetにホストとして参加中...")

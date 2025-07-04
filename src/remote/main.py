@@ -20,18 +20,30 @@ def main():
     parser = argparse.ArgumentParser(description="VTuber受付システム - リモートPC")
     parser.add_argument("--front-ip", required=True, help="フロントPCのIPアドレス")
     parser.add_argument(
-        "--port", type=int, default=9999, help="通信ポート (デフォルト: 9999)"
+        "--skip-extension-check", action="store_true", help="拡張機能チェックをスキップ"
+    )
+    parser.add_argument(
+        "--skip-account-check", action="store_true", help="Googleアカウントチェックをスキップ"
     )
 
     args = parser.parse_args()
 
     print("=== VTuber受付システム - リモートPC ===")
     print(f"フロントPC IP: {args.front_ip}")
-    print(f"通信ポート: {args.port}")
+
+    if args.skip_extension_check:
+        print("注意: 拡張機能チェックをスキップします")
+    if args.skip_account_check:
+        print("注意: Googleアカウントチェックをスキップします")
     print()
 
-    # 受付コントローラーを初期化
-    controller = ReceptionController(args.front_ip, args.port)
+    # 受付コントローラーを初期化（固定ポート9999）
+    controller = ReceptionController(
+        args.front_ip,
+        9999,
+        skip_extension_check=args.skip_extension_check,
+        skip_account_check=args.skip_account_check
+    )
 
     try:
         # 受付セッションを実行
