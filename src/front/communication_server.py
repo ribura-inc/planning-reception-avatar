@@ -35,6 +35,10 @@ class CommunicationServer:
 
         # メッセージハンドラー
         self.message_handlers: dict[str, Callable[[dict[str, Any]], None]] = {}
+        
+        # クライアント接続管理
+        self.clients: set[tuple[socket.socket, tuple]] = set()
+        self._clients_lock = threading.Lock()
 
     def register_handler(
         self, message_type: str, handler: Callable[[dict[str, Any]], None]
@@ -113,6 +117,11 @@ class CommunicationServer:
         self, client_socket: socket.socket, client_address: tuple
     ) -> None:
         """クライアント接続処理（長さプレフィックス対応）"""
+        # クライアント接続をリストに追加
+        with self._clients_lock:
+            self.clients.add((client_socket, client_address))
+        logger.info(f"クライアント接続追加: {client_address} (総数: {len(self.clients)})")
+        
         try:
             client_socket.settimeout(30)  # 30秒タイムアウト
 
@@ -172,8 +181,11 @@ class CommunicationServer:
         except Exception as e:
             logger.error(f"クライアント処理エラー from {client_address}: {e}")
         finally:
+            # クライアント接続をリストから削除
+            with self._clients_lock:
+                self.clients.discard((client_socket, client_address))
+            logger.info(f"クライアント接続終了: {client_address} (残り: {len(self.clients)})")
             client_socket.close()
-            logger.info(f"クライアント接続終了: {client_address}")
 
     def _process_message(self, data: dict[str, Any]) -> None:
         """受信メッセージを処理"""

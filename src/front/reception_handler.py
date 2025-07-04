@@ -4,6 +4,7 @@
 """
 
 import logging
+import threading
 import time
 from typing import Any
 
@@ -40,6 +41,9 @@ class ReceptionHandler:
 
         # メッセージハンドラーを登録
         self._register_handlers()
+
+        # 切断監視フラグ
+        self._monitoring_disconnection = False
 
     def _register_handlers(self) -> None:
         """メッセージハンドラーを登録"""
@@ -126,6 +130,62 @@ class ReceptionHandler:
         self._leave_meeting()
         logger.info("セッション終了処理が完了しました")
 
+    def _start_disconnection_monitoring(self) -> None:
+        """切断監視を開始"""
+        if not self._monitoring_disconnection:
+            self._monitoring_disconnection = True
+            monitor_thread = threading.Thread(
+                target=self._monitor_client_connections, daemon=True
+            )
+            monitor_thread.start()
+            logger.info("クライアント切断監視を開始しました")
+
+    def _monitor_client_connections(self) -> None:
+        """クライアント接続を監視"""
+        last_client_count = 0
+
+        while self._monitoring_disconnection and self.server.is_running():
+            try:
+                current_client_count = len(self.server.clients)
+
+                # クライアント数が減少した場合（切断検知）
+                if (
+                    current_client_count < last_client_count
+                    and current_client_count == 0
+                ):
+                    logger.info("全てのリモートクライアントが切断されました")
+                    self._handle_all_clients_disconnected()
+
+                last_client_count = current_client_count
+                time.sleep(2)  # 2秒間隔でチェック
+
+            except Exception as e:
+                logger.error(f"切断監視エラー: {e}")
+                time.sleep(5)
+
+    def _handle_all_clients_disconnected(self) -> None:
+        """全クライアント切断時の処理"""
+        logger.info("切断処理を開始: Chromeを終了し待機状態に戻ります")
+
+        try:
+            # Meet退出とChrome終了
+            if self.meet_participant:
+                logger.info("Meetから退出しています...")
+                self.meet_participant.leave_meeting()
+                self.meet_participant.cleanup()
+                self.meet_participant = None
+                logger.info("Chromeが終了され、待機状態に戻りました")
+
+            # 現在のMeet URLもクリア
+            self.current_meet_url = None
+
+        except Exception as e:
+            logger.error(f"切断処理エラー: {e}")
+
+    def _stop_disconnection_monitoring(self) -> None:
+        """切断監視を停止"""
+        self._monitoring_disconnection = False
+        logger.info("クライアント切断監視を停止しました")
 
     def start_reception(self) -> bool:
         """受付サービスを開始"""
@@ -138,6 +198,9 @@ class ReceptionHandler:
 
             logger.info(f"受付サービスが開始されました (ポート: {self.port})")
             logger.info("リモートPCからの接続を待機中...")
+
+            # 切断監視を開始
+            self._start_disconnection_monitoring()
 
             return True
 
@@ -159,6 +222,9 @@ class ReceptionHandler:
         """受付サービスを停止"""
         try:
             logger.info("受付サービスを停止中...")
+
+            # 切断監視を停止
+            self._stop_disconnection_monitoring()
 
             # Meet退出
             self._leave_meeting()
