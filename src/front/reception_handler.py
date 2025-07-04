@@ -4,7 +4,9 @@
 """
 
 import logging
+import socket
 import time
+import urllib.request
 from typing import Any
 
 from .communication_server import CommunicationServer
@@ -94,9 +96,9 @@ class ReceptionHandler:
             if self.meet_participant:
                 self.meet_participant.cleanup()
 
-            # 新しい参加者インスタンスを作成
+            # 新しい参加者インスタンスを作成（ゲストとして参加）
             self.meet_participant = MeetParticipant(
-                use_profile=True, display_name=self.display_name
+                use_profile=False, display_name=self.display_name
             )
 
             # Meet参加
@@ -128,10 +130,45 @@ class ReceptionHandler:
         self._leave_meeting()
         logger.info("セッション終了処理が完了しました")
 
+    def _get_global_ip(self) -> str | None:
+        """グローバルIPアドレスを取得"""
+        try:
+            # 複数のサービスを試す
+            services = [
+                "https://api.ipify.org",
+                "https://checkip.amazonaws.com",
+                "https://ipinfo.io/ip",
+            ]
+            
+            for service in services:
+                try:
+                    with urllib.request.urlopen(service, timeout=5) as response:
+                        return response.read().decode().strip()
+                except Exception:
+                    continue
+                    
+            # フォールバック: ローカルIPを取得
+            hostname = socket.gethostname()
+            return socket.gethostbyname(hostname)
+            
+        except Exception as e:
+            logger.error(f"IPアドレスの取得に失敗: {e}")
+            return None
+
     def start_reception(self) -> bool:
         """受付サービスを開始"""
         try:
             logger.info("受付サービスを開始します")
+            
+            # グローバルIPアドレスを表示
+            global_ip = self._get_global_ip()
+            if global_ip:
+                print("\n" + "=" * 50)
+                print(f"フロントPCのグローバルIPアドレス: {global_ip}")
+                print("=" * 50 + "\n")
+                logger.info(f"グローバルIPアドレス: {global_ip}")
+            else:
+                print("\n警告: グローバルIPアドレスの取得に失敗しました")
 
             if not self.server.start_server():
                 logger.error("サーバーの起動に失敗しました")
