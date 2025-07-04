@@ -180,3 +180,6 @@ credentials.json
 # Chrome profile
 .chrome-profile-front/
 .chrome-profile-remote/
+
+# avatar
+.avatar/
