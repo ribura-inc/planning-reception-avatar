@@ -44,4 +44,51 @@ curl -sSf https://rye.astral.sh/get | bash
 
 # 依存関係のインストール
 rye sync
+
+# Google Cloud認証設定
+# 1. Google Cloud ConsoleでMeet APIを有効化
+# 2. credentials.jsonをプロジェクトルートに配置
+# 3. 初回実行時にブラウザで認証
 ```
+
+### Tailscaleセットアップ（推奨）
+
+異なるネットワーク間でのデバイス通信には[Tailscale](https://tailscale.com)を使用：
+
+```bash
+# MacOS
+[Tailscale for MacOS](https://tailscale.com/download/mac) からインストーラーをダウンロードしてインストール
+
+# Ubuntu/Debian
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+
+# 接続確認
+tailscale status
+```
+
+## 使用方法
+
+### 1. フロントPC側（先に起動）
+
+```bash
+python front_pc.py --display-name "Hotel Reception"
+```
+
+### 2. リモートPC側（後に起動）
+
+```bash
+# ローカルネットワーク
+python remote_pc.py --front-ip 192.168.1.100
+
+# Tailscale使用時
+python remote_pc.py --front-ip my-front-pc
+```
+
+### 動作フロー
+
+1. フロントPC起動 → サーバー待機
+2. リモートPC起動 → Meet URL生成・送信
+3. 両PC自動Meet参加
+4. Auto-Admit有効化
+5. 受付対応開始

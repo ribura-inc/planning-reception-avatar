@@ -1,15 +1,18 @@
 """
 通信サーバークラス（フロントPC用）
-リモートPCからのメッセージを受信して処理する
+Tailscaleを使用してリモートPCからのメッセージを受信して処理する
 """
 
 import json
 import logging
 import socket
+import struct
 import threading
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
+
+from ..utils.tailscale_utils import TailscaleUtils, check_and_setup_tailscale
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -43,6 +46,30 @@ class CommunicationServer:
     def start_server(self) -> bool:
         """サーバーを開始"""
         try:
+            # Tailscaleセットアップの確認
+            is_valid, message = check_and_setup_tailscale()
+            if not is_valid:
+                logger.error(f"Tailscale設定エラー: {message}")
+                logger.error("TAILSCALE_SETUP.mdを参照してTailscaleを設定してください")
+                return False
+
+            logger.info(f"Tailscale確認完了: {message}")
+
+            # 自分のTailscale IPアドレスを表示
+            my_ip = TailscaleUtils.get_my_tailscale_ip()
+            if my_ip:
+                logger.info(f"このデバイスのTailscale IP: {my_ip}")
+                print("\n=== Tailscale情報 ===")
+                print(f"このデバイスのIP: {my_ip}")
+
+                # 利用可能なデバイス一覧を表示
+                devices = TailscaleUtils.get_tailscale_devices()
+                if devices:
+                    print("利用可能なデバイス:")
+                    for hostname, ip in devices.items():
+                        print(f"  - {hostname}: {ip}")
+                print("=" * 20 + "\n")
+
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind((self.host, self.port))
@@ -85,41 +112,65 @@ class CommunicationServer:
     def _handle_client(
         self, client_socket: socket.socket, client_address: tuple
     ) -> None:
-        """クライアント接続処理"""
+        """クライアント接続処理（長さプレフィックス対応）"""
         try:
-            while True:
-                data = client_socket.recv(4096)
-                if not data:
-                    break
+            client_socket.settimeout(30)  # 30秒タイムアウト
 
+            while True:
+                # メッセージ長を受信（4バイト）
                 try:
-                    message = data.decode("utf-8")
-                    logger.info(f"メッセージ受信 from {client_address}: {message}")
+                    length_bytes = self._recv_exact(client_socket, 4)
+                    if not length_bytes:
+                        break
+
+                    message_length = int.from_bytes(length_bytes, 'big')
+                    if message_length > 10 * 1024 * 1024:  # 10MB以上はエラー
+                        logger.error(f"メッセージが大きすぎます: {message_length}バイト")
+                        break
+
+                    # 実際のメッセージを受信
+                    message_bytes = self._recv_exact(client_socket, message_length)
+                    if not message_bytes:
+                        break
+
+                    message = message_bytes.decode("utf-8")
+                    logger.info(f"メッセージ受信 from {client_address}: {message[:100]}...")
 
                     # JSONメッセージとして処理
                     try:
                         json_data = json.loads(message)
                         self._process_message(json_data)
-                    except json.JSONDecodeError:
-                        logger.warning(f"JSON解析失敗: {message}")
 
-                    # 受信確認を送信
-                    response = json.dumps(
-                        {
+                        # 受信確認を長さプレフィックス付きで送信
+                        response_data = {
                             "status": "received",
                             "timestamp": datetime.now().isoformat(),
                             "message": "メッセージを受信しました",
                         }
-                    ).encode("utf-8")
-                    client_socket.send(response)
+                        response = json.dumps(response_data).encode("utf-8")
 
-                except UnicodeDecodeError:
-                    logger.error(f"メッセージデコードエラー from {client_address}")
+                        # 長さプレフィックス付きで送信
+                        client_socket.sendall(len(response).to_bytes(4, 'big'))
+                        client_socket.sendall(response)
+
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON解析失敗 from {client_address}: {e}")
+                        logger.error(f"受信メッセージ: {message[:200]}")
+
+                except UnicodeDecodeError as e:
+                    logger.error(f"メッセージデコードエラー from {client_address}: {e}")
+                    break
+                except TimeoutError:
+                    logger.warning(f"クライアントタイムアウト: {client_address}")
+                    break
+                except struct.error as e:
+                    logger.error(f"メッセージ長解析エラー from {client_address}: {e}")
+                    break
 
         except ConnectionResetError:
             logger.info(f"クライアント切断: {client_address}")
         except Exception as e:
-            logger.error(f"クライアント処理エラー: {e}")
+            logger.error(f"クライアント処理エラー from {client_address}: {e}")
         finally:
             client_socket.close()
             logger.info(f"クライアント接続終了: {client_address}")
@@ -162,6 +213,16 @@ class CommunicationServer:
 
         logger.info("サーバーを停止しました")
 
+    def _recv_exact(self, sock: socket.socket, length: int) -> bytes:
+        """指定したバイト数を確実に受信"""
+        data = b''
+        while len(data) < length:
+            chunk = sock.recv(length - len(data))
+            if not chunk:
+                return b''  # 接続が閉じられた
+            data += chunk
+        return data
+
     def is_running(self) -> bool:
         """サーバーが動作中かを確認"""
         return self.running
@@ -174,3 +235,5 @@ class CommunicationServer:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """コンテキストマネージャーの終了処理"""
         self.stop_server()
+        # 未使用パラメータを明示的に無視
+        del exc_type, exc_val, exc_tb
