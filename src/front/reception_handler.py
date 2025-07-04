@@ -97,9 +97,7 @@ class ReceptionHandler:
                 self.meet_participant.cleanup()
 
             # 新しい参加者インスタンスを作成（ゲストとして参加）
-            self.meet_participant = MeetParticipant(
-                use_profile=False, display_name=self.display_name
-            )
+            self.meet_participant = MeetParticipant(display_name=self.display_name)
 
             # Meet参加
             if self.meet_participant.join_meeting(meet_url):
@@ -139,18 +137,18 @@ class ReceptionHandler:
                 "https://checkip.amazonaws.com",
                 "https://ipinfo.io/ip",
             ]
-            
+
             for service in services:
                 try:
                     with urllib.request.urlopen(service, timeout=5) as response:
                         return response.read().decode().strip()
                 except Exception:
                     continue
-                    
+
             # フォールバック: ローカルIPを取得
             hostname = socket.gethostname()
             return socket.gethostbyname(hostname)
-            
+
         except Exception as e:
             logger.error(f"IPアドレスの取得に失敗: {e}")
             return None
@@ -159,7 +157,7 @@ class ReceptionHandler:
         """受付サービスを開始"""
         try:
             logger.info("受付サービスを開始します")
-            
+
             # グローバルIPアドレスを表示
             global_ip = self._get_global_ip()
             if global_ip:

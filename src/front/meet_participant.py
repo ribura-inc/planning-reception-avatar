@@ -5,7 +5,6 @@ Meet参加クラス（フロントPC用）
 
 import logging
 import time
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -43,25 +42,17 @@ class MeetParticipant:
         "//button[@aria-label='通話から退出' or @aria-label='Leave call']"
     )
 
-    def __init__(self, use_profile: bool = True, display_name: str = "Reception"):
+    def __init__(self, display_name: str = "Reception"):
         """
         Args:
-            use_profile: Chromeプロファイルを使用するか
             display_name: 表示名
         """
-        self.use_profile = use_profile
         self.display_name = display_name
         self.driver: webdriver.Chrome | None = None
-        self.profile_dir = Path(__file__).parent.parent.parent / ".chrome-profile-front"
 
     def setup_browser(self) -> None:
         """Chromeブラウザのセットアップ"""
         options = Options()
-
-        if self.use_profile:
-            self.profile_dir.mkdir(parents=True, exist_ok=True)
-            options.add_argument(f"--user-data-dir={self.profile_dir}")
-            options.add_argument("--profile-directory=Default")
 
         # 言語設定
         options.add_argument("--lang=ja")
@@ -111,34 +102,11 @@ class MeetParticipant:
             self.driver.get(meet_url)
             time.sleep(self.PAGE_LOAD_WAIT)
 
-            if self.use_profile:
-                return self._join_as_logged_in_user()
-            else:
-                return self._join_as_guest()
+            # フロントPCは常にゲストとして参加
+            return self._join_as_guest()
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
-            return False
-
-    def _join_as_logged_in_user(self) -> bool:
-        """ログイン済みユーザーとして参加"""
-        try:
-            logger.info("ログイン済みユーザーとして参加")
-
-            if not self.driver:
-                return False
-            join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
-                expected_conditions.element_to_be_clickable((By.XPATH, self.XPATH_JOIN_BUTTON))
-            )
-            join_button.click()
-            logger.info("会議に参加しました")
-
-            # Geminiポップアップ処理
-            self._handle_gemini_popup()
-            return True
-
-        except TimeoutException:
-            logger.error("参加ボタンが見つかりませんでした")
             return False
 
     def _join_as_guest(self) -> bool:
@@ -150,7 +118,9 @@ class MeetParticipant:
             if not self.driver:
                 return False
             name_input = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
-                expected_conditions.presence_of_element_located((By.XPATH, self.XPATH_NAME_INPUT))
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, self.XPATH_NAME_INPUT)
+                )
             )
             name_input.clear()
             name_input.send_keys(self.display_name)
@@ -189,7 +159,9 @@ class MeetParticipant:
                 return True
 
             leave_button = WebDriverWait(self.driver, 5).until(
-                expected_conditions.element_to_be_clickable((By.XPATH, self.XPATH_LEAVE_BUTTON))
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, self.XPATH_LEAVE_BUTTON)
+                )
             )
             leave_button.click()
             logger.info("会議から退出しました")
