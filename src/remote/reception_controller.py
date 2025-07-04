@@ -8,6 +8,7 @@ import time
 
 from .communication_client import CommunicationClient
 from .meet_manager import MeetManager
+from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 
 # ロギング設定
 logging.basicConfig(
@@ -39,6 +40,14 @@ class ReceptionController:
         """受付セッションを開始"""
         try:
             logger.info("受付セッションを開始します")
+
+            # 0. VTube Studio状態確認
+            logger.info("VTube Studioの状態を確認中...")
+            vtube_ok, vtube_message = check_and_setup_vtube_studio()
+            if not vtube_ok:
+                logger.error(f"VTube Studio確認失敗: {vtube_message}")
+                return False
+            logger.info(f"VTube Studio確認成功: {vtube_message}")
 
             # 1. Meet URL生成
             logger.info("Meet URLを生成中...")
