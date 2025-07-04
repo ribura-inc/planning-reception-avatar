@@ -4,7 +4,6 @@
 リモートPCからのMeet URL受信とMeet参加を処理する
 """
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -17,28 +16,13 @@ from src.front.reception_handler import ReceptionHandler  # noqa: E402
 
 def main():
     """メイン処理"""
-    parser = argparse.ArgumentParser(description="VTuber受付システム - フロントPC")
-    parser.add_argument(
-        "--port", type=int, default=9999, help="リスニングポート (デフォルト: 9999)"
-    )
-    parser.add_argument(
-        "--display-name", default="Reception", help="Meet表示名 (デフォルト: Reception)"
-    )
-    parser.add_argument(
-        "--host", default="0.0.0.0", help="バインドホスト (デフォルト: 0.0.0.0)"
-    )
-
-    args = parser.parse_args()
-
+    # シンプルな設定（オプション削減）
     print("=== VTuber受付システム - フロントPC ===")
-    print(f"リスニングホスト: {args.host}")
-    print(f"リスニングポート: {args.port}")
-    print(f"Meet表示名: {args.display_name}")
-    print()
+    print("受付待機中...")
 
-    # 受付ハンドラーを初期化
+    # 受付ハンドラーを初期化（固定設定）
     handler = ReceptionHandler(
-        host=args.host, port=args.port, display_name=args.display_name
+        host="0.0.0.0", port=9999, display_name="Reception"
     )
 
     try:

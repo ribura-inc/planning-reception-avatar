@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 class MeetParticipant:
     """Google Meet参加管理クラス"""
 
-    # 待機時間設定
-    PAGE_LOAD_WAIT = 3
-    BUTTON_WAIT_TIMEOUT = 10
-    POPUP_WAIT = 10
+    # 待機時間設定（最適化済み）
+    PAGE_LOAD_WAIT = 1.5
+    BUTTON_WAIT_TIMEOUT = 15
+    POPUP_WAIT = 90
 
     # XPath定義
     XPATH_JOIN_BUTTON = (
@@ -38,6 +38,7 @@ class MeetParticipant:
     XPATH_GEMINI_JOIN = (
         "//span[contains(text(), '今すぐ参加') or contains(text(), 'Join now')]/.."
     )
+    XPATH_EXTENSION_ENABLE = "//span[contains(text(), '今すぐ有効にする') or contains(text(), 'Enable now')]/.."
     XPATH_LEAVE_BUTTON = (
         "//button[@aria-label='通話から退出' or @aria-label='Leave call']"
     )
@@ -140,17 +141,25 @@ class MeetParticipant:
             return False
 
     def _handle_gemini_popup(self) -> None:
-        """Geminiメモ作成ポップアップの処理"""
-        try:
-            time.sleep(self.POPUP_WAIT)
-            gemini_join_button = self.driver.find_element(
-                By.XPATH, self.XPATH_GEMINI_JOIN
-            )
-            gemini_join_button.click()
-            logger.info("Geminiメモ作成確認を処理しました")
-        except Exception:
-            # ポップアップが出ない場合は何もしない
-            pass
+        """Geminiメモ作成ポップアップの処理（改良版）"""
+        max_wait_time = self.POPUP_WAIT
+        check_interval = 0.5
+        elapsed_time = 0
+
+        while elapsed_time < max_wait_time:
+            try:
+                # Gemini参加ボタンをチェック
+                gemini_join_button = self.driver.find_element(
+                    By.XPATH, self.XPATH_GEMINI_JOIN
+                )
+                gemini_join_button.click()
+                logger.info("Geminiメモ作成確認を処理しました")
+                return
+            except Exception:
+                pass
+
+            time.sleep(check_interval)
+            elapsed_time += check_interval
 
     def leave_meeting(self) -> bool:
         """会議から退出"""
@@ -165,7 +174,7 @@ class MeetParticipant:
             )
             leave_button.click()
             logger.info("会議から退出しました")
-            time.sleep(2)
+            time.sleep(1)
             return True
 
         except TimeoutException:
