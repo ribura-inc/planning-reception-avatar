@@ -142,22 +142,26 @@ class ReceptionHandler:
 
     def _monitor_client_connections(self) -> None:
         """クライアント接続を監視"""
-        last_client_count = 0
+        disconnection_time = None
 
         while self._monitoring_disconnection and self.server.is_running():
             try:
-                current_client_count = len(self.server.clients)
+                has_client = len(self.server.clients) > 0
 
-                # クライアント数が減少した場合（切断検知）
-                if (
-                    current_client_count < last_client_count
-                    and current_client_count == 0
-                ):
-                    logger.info("全てのリモートクライアントが切断されました")
-                    self._handle_all_clients_disconnected()
+                if not has_client:
+                    if disconnection_time is None:
+                        disconnection_time = time.time()
+                        logger.warning("リモートクライアントが切断されました。30秒待機中...")
+                    elif time.time() - disconnection_time >= 30:
+                        logger.info("リモートクライアントが切断されました")
+                        self._handle_all_clients_disconnected()
+                        break
+                else:
+                    if disconnection_time is not None:
+                        logger.info("リモートクライアントが再接続されました")
+                        disconnection_time = None
 
-                last_client_count = current_client_count
-                time.sleep(2)  # 2秒間隔でチェック
+                time.sleep(2)
 
             except Exception as e:
                 logger.error(f"切断監視エラー: {e}")
