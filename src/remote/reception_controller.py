@@ -133,6 +133,11 @@ class ReceptionController:
             while True:
                 time.sleep(1)
 
+                # Meetセッション状態チェック
+                if not self.meet_manager.is_session_active():
+                    logger.info("Chromeが終了またはMeetから退出したため、セッションを終了します")
+                    break
+
                 # 通信チェック
                 if not self.communication_client.is_connected():
                     logger.warning("フロントPCとの通信が切断されました")

@@ -250,6 +250,30 @@ class MeetManager:
         input("ログイン完了後、Enterキーを押してください: ")
         return True
 
+    def is_session_active(self) -> bool:
+        """Chromeとセッションが有効かどうかを確認"""
+        try:
+            if not self.driver:
+                return False
+
+            # ChromeDriverが終了していないかチェック
+            self.driver.current_url
+
+            # ページタイトルやURLでMeetから退出していないかチェック
+            current_url = self.driver.current_url
+            if "meet.google.com" not in current_url:
+                return False
+
+            # ページが会議画面から外れていないかチェック（ホーム画面に戻る ってソースにあるか）
+            if "ホーム画面に戻る" in self.driver.page_source:
+                return False
+
+            return True
+
+        except Exception:
+            # ChromeDriverが終了している場合やその他のエラー
+            return False
+
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
         if self.driver:
