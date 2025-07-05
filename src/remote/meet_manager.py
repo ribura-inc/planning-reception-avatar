@@ -31,7 +31,6 @@ class MeetManager:
     SCOPES = ["https://www.googleapis.com/auth/meetings.space.created"]
 
     # 待機時間設定
-    PAGE_LOAD_WAIT = 5
     BUTTON_WAIT_TIMEOUT = 10
 
     # 拡張機能情報
@@ -150,7 +149,6 @@ class MeetManager:
 
         print(f"Meeting URLを開く: {meet_url}")
         self.driver.get(meet_url)
-        time.sleep(self.PAGE_LOAD_WAIT)
 
         # 参加ボタンをクリック
         join_button = None
@@ -166,7 +164,6 @@ class MeetManager:
         if join_button:
             join_button.click()
             print("会議に参加しました")
-            time.sleep(3)
         else:
             raise TimeoutException("参加ボタンが見つかりませんでした")
 
@@ -176,7 +173,6 @@ class MeetManager:
             raise ValueError("ブラウザが初期化されていません")
 
         print("Auto-Admit機能を有効化中...")
-        time.sleep(5)
 
         auto_admit_button = None
         try:

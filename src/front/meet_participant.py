@@ -4,13 +4,10 @@ Meet参加クラス（フロントPC用）
 """
 
 import logging
-import threading
 import time
-from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
 
-import psutil
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
@@ -117,8 +114,10 @@ class MeetParticipant:
             logger.info(f"表示名を入力: {self.display_name}")
 
             # 参加リクエスト
-            join_button = self.driver.find_element(
-                By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH
+            join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH)
+                )
             )
             join_button.click()
             logger.info("参加をリクエストしました")
@@ -165,7 +164,6 @@ class MeetParticipant:
             )
             leave_button.click()
             logger.info("会議から退出しました")
-            time.sleep(1)
             return True
 
         except TimeoutException:
@@ -174,7 +172,6 @@ class MeetParticipant:
         except Exception as e:
             logger.error(f"退出エラー: {e}")
             return False
-
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
