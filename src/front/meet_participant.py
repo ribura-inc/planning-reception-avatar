@@ -39,10 +39,6 @@ class MeetParticipant:
         """
         self.display_name = display_name
         self.driver: webdriver.Chrome | None = None
-        self._process_monitor_thread: threading.Thread | None = None
-        self._monitoring = False
-        self._on_chrome_exit_callback: Callable[[], None] | None = None
-        self._chrome_pid: int | None = None
 
     def setup_browser(self) -> None:
         """Chromeブラウザのセットアップ"""
@@ -71,20 +67,6 @@ class MeetParticipant:
         options.add_argument("--window-size=1920,1080")
 
         self.driver = webdriver.Chrome(options=options)
-
-        # ChromeのPIDを取得
-        try:
-            # ChromeDriverのPIDから実際のChromeプロセスを特定
-            if hasattr(self.driver.service, "process"):
-                driver_pid = self.driver.service.process.pid
-                # ChromeDriverの子プロセスとしてChromeを探す
-                parent_process = psutil.Process(driver_pid)
-                for child in parent_process.children(recursive=True):
-                    if "chrome" in child.name().lower():
-                        self._chrome_pid = child.pid
-                        break
-        except Exception as e:
-            logger.error(f"Chrome PID取得エラー: {e}")
 
     def validate_meet_url(self, url: str) -> bool:
         """Meet URLの妥当性を検証"""
@@ -193,100 +175,13 @@ class MeetParticipant:
             logger.error(f"退出エラー: {e}")
             return False
 
-    def is_in_meeting(self) -> bool:
-        """会議中かどうかを確認"""
-        if not self.driver:
-            return False
-
-        try:
-            # 退出ボタンの存在で会議中かを判定
-            self.driver.find_element(By.XPATH, Config.GoogleMeet.LEAVE_BUTTON_XPATH)
-            return True
-        except Exception:
-            return False
-
-    def set_chrome_exit_callback(self, callback: Callable[[], None]) -> None:
-        """Chrome終了時のコールバックを設定"""
-        self._on_chrome_exit_callback = callback
-
-    def start_process_monitoring(self) -> None:
-        """Chromeプロセスの監視を開始"""
-        if not self._monitoring:
-            self._monitoring = True
-            self._process_monitor_thread = threading.Thread(
-                target=self._monitor_chrome_process, daemon=True
-            )
-            self._process_monitor_thread.start()
-            logger.info("Chromeプロセス監視を開始しました")
-
-    def stop_process_monitoring(self) -> None:
-        """Chromeプロセスの監視を停止"""
-        self._monitoring = False
-        if self._process_monitor_thread and self._process_monitor_thread.is_alive():
-            self._process_monitor_thread.join(timeout=2)
-        logger.info("Chromeプロセス監視を停止しました")
-
-    def _monitor_chrome_process(self) -> None:
-        """Chromeプロセスを監視"""
-        while self._monitoring:
-            try:
-                # ドライバーの状態チェック
-                if not self.driver:
-                    logger.info("Chromeドライバーが終了しました")
-                    if self._on_chrome_exit_callback:
-                        self._on_chrome_exit_callback()
-                    break
-
-                # PIDによるプロセス監視
-                if self._chrome_pid:
-                    try:
-                        chrome_process = psutil.Process(self._chrome_pid)
-                        if not chrome_process.is_running():
-                            logger.info(
-                                f"Chromeプロセス (PID: {self._chrome_pid}) が終了しました"
-                            )
-                            if self._on_chrome_exit_callback:
-                                self._on_chrome_exit_callback()
-                            break
-                    except psutil.NoSuchProcess:
-                        logger.info(
-                            f"Chromeプロセス (PID: {self._chrome_pid}) が見つかりません"
-                        )
-                        if self._on_chrome_exit_callback:
-                            self._on_chrome_exit_callback()
-                        break
-
-                # Meetセッション状態チェック
-                if not self.is_in_meeting():
-                    try:
-                        # Meetから退出したかチェック
-                        current_url = self.driver.current_url
-                        if (
-                            "meet.google.com" not in current_url
-                            or Config.GoogleMeet.HOME_BUTTON_TEXT
-                            in self.driver.page_source
-                        ):
-                            logger.info("Meetから退出しました")
-                            if self._on_chrome_exit_callback:
-                                self._on_chrome_exit_callback()
-                            break
-                    except Exception:
-                        pass
-
-                time.sleep(2)  # 2秒ごとにチェック
-
-            except Exception as e:
-                logger.error(f"プロセス監視エラー: {e}")
-                time.sleep(5)
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        self.stop_process_monitoring()
         try:
             if self.driver:
                 self.driver.quit()
                 self.driver = None
-                self._chrome_pid = None
                 logger.info("ブラウザを終了しました")
         except Exception as e:
             logger.error(f"ブラウザ終了エラー: {e}")
@@ -295,6 +190,6 @@ class MeetParticipant:
         """コンテキストマネージャーのエントリ"""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, _exc_type: Any, _exc_val: Any, _exc_tb: Any) -> None:
         """コンテキストマネージャーの終了処理"""
         self.cleanup()

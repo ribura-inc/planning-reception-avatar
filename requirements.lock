@@ -120,6 +120,8 @@ protobuf==6.31.1
     # via googleapis-common-protos
     # via grpcio-status
     # via proto-plus
+psutil==7.0.0
+    # via vtuber-reception-system
 pyasn1==0.6.1
     # via pyasn1-modules
     # via rsa

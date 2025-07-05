@@ -165,6 +165,8 @@ protobuf==6.31.1
     # via googleapis-common-protos
     # via grpcio-status
     # via proto-plus
+psutil==7.0.0
+    # via vtuber-reception-system
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.3

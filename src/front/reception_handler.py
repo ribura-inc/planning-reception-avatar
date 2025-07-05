@@ -105,30 +105,15 @@ class ReceptionHandler:
             # 新しい参加者インスタンスを作成（ゲストとして参加）
             self.meet_participant = MeetParticipant(display_name=self.display_name)
 
-            # Chrome終了コールバックを設定
-            self.meet_participant.set_chrome_exit_callback(self._handle_chrome_exit)
-
             # Meet参加
             if self.meet_participant.join_meeting(meet_url):
                 logger.info("Meetへの参加が完了しました")
-
-                # Chrome プロセス監視を開始
-                self.meet_participant.start_process_monitoring()
             else:
                 logger.error("Meetへの参加に失敗しました")
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
 
-    def _handle_chrome_exit(self) -> None:
-        """Chrome終了時の処理"""
-        logger.warning("フロントPC側でChromeの終了が検知されました")
-        try:
-            # セッション終了処理
-            self._leave_meeting()
-            self.current_meet_url = None
-        except Exception as e:
-            logger.error(f"Chrome終了処理エラー: {e}")
 
     def _leave_meeting(self) -> None:
         """Meetから退出"""

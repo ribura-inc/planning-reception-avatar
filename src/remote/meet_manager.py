@@ -268,7 +268,7 @@ class MeetManager:
                 return False
 
             # ChromeDriverが終了していないかチェック
-            self.driver.current_url
+            _ = self.driver.current_url
 
             # ページタイトルやURLでMeetから退出していないかチェック
             current_url = self.driver.current_url
