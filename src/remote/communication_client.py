@@ -283,6 +283,10 @@ class CommunicationClient:
             finally:
                 self.socket = None
 
+    def send_heartbeat(self) -> bool:
+        """ハートビート信号を送信して接続を維持"""
+        return self.send_notification("heartbeat")
+
     def disconnect(self, reuse: bool = True) -> None:
         """接続を切断またはプールに戻す"""
         if self.socket:

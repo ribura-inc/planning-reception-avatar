@@ -163,13 +163,22 @@ class ReceptionController:
         """セッション終了まで待機"""
         try:
             logger.info("受付セッション中... (Ctrl+Cで終了)")
+            heartbeat_counter = 0
+            
             while True:
                 time.sleep(1)
+                heartbeat_counter += 1
 
                 # セッション終了フラグのチェック
                 if self._session_ended:
                     logger.info("Chrome終了により自動でセッションを終了します")
                     break
+
+                # 20秒ごとにハートビートを送信
+                if heartbeat_counter >= 20:
+                    if self.communication_client.is_connected():
+                        self.communication_client.send_heartbeat()
+                    heartbeat_counter = 0
 
                 # Meetセッション状態チェック（従来の方法も残す）
                 if not self.meet_manager.is_session_active():

@@ -91,7 +91,9 @@ class ReceptionHandler:
     def _handle_notification(self, data: dict[str, Any]) -> None:
         """通知処理"""
         message = data.get("content", "")
-        logger.info(f"通知: {message}")
+        # ハートビートは無視
+        if message != "heartbeat":
+            logger.info(f"通知: {message}")
 
     def _join_meeting(self, meet_url: str) -> None:
         """Meetに参加"""
