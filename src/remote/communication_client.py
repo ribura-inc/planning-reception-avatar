@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 from typing import Any
 
+from ..models.enums import MessageType
 from ..utils.tailscale_utils import TailscaleUtils, check_and_setup_tailscale
 
 # ロギング設定
@@ -204,7 +205,7 @@ class CommunicationClient:
     def send_meet_url(self, meet_url: str) -> bool:
         """Meet URLをフロントPCに送信"""
         message_data = {
-            "type": "meet_url",
+            "type": MessageType.MEET_URL.value,
             "content": meet_url,
             "timestamp": datetime.now().isoformat(),
             "action": "join_meeting",
@@ -285,7 +286,7 @@ class CommunicationClient:
 
     def send_heartbeat(self) -> bool:
         """ハートビート信号を送信して接続を維持"""
-        return self.send_notification("heartbeat")
+        return self.send_notification(MessageType.HEARTBEAT.value)
 
     def disconnect(self, reuse: bool = True) -> None:
         """接続を切断またはプールに戻す"""

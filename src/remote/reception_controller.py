@@ -6,6 +6,7 @@ Meet URL生成・送信とホスト処理を統合管理する
 import logging
 import time
 
+from ..models.enums import RemoteCommand
 from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
 from .meet_manager import MeetManager
@@ -26,6 +27,7 @@ class ReceptionController:
         port: int = 9999,
         skip_extension_check: bool = False,
         skip_account_check: bool = False,
+        gui = None,
     ):
         """
         Args:
@@ -33,11 +35,13 @@ class ReceptionController:
             port: 通信ポート
             skip_extension_check: 拡張機能チェックをスキップ
             skip_account_check: Googleアカウントチェックをスキップ
+            gui: GUIオブジェクト（オプション）
         """
         self.front_pc_ip = front_pc_ip
         self.port = port
         self.skip_extension_check = skip_extension_check
         self.skip_account_check = skip_account_check
+        self.gui = gui
         self.meet_manager = MeetManager()
 
         # 最適化された通信クライアントを使用（デフォルト）
@@ -46,14 +50,23 @@ class ReceptionController:
         self.current_meet_url: str | None = None
         self._session_ended: bool = False
 
+    def _update_gui(self, message: str) -> None:
+        """GUI更新（GUIがある場合のみ）"""
+        if self.gui:
+            try:
+                self.gui.add_log(message)
+            except Exception as e:
+                logger.error(f"GUI更新エラー: {e}")
+
     def _handle_chrome_exit(self) -> None:
         """Chrome終了時の処理"""
         logger.info("Chrome終了を検知しました")
+        self._update_gui("Chrome終了を検知しました")
         try:
             # フロントPCに終了通知を送信
             if self.communication_client.is_connected():
                 logger.info("フロントPCに終了通知を送信中...")
-                self.communication_client.send_command("end_session")
+                self.communication_client.send_command(RemoteCommand.END_SESSION.value)
                 time.sleep(1)  # 送信完了を待つ
 
             # セッション終了フラグを立てる
@@ -69,26 +82,34 @@ class ReceptionController:
 
             # 0. VTube Studio状態確認
             logger.info("VTube Studioの状態を確認中...")
+            self._update_gui("VTube Studioの状態を確認中...")
             vtube_ok, vtube_message = check_and_setup_vtube_studio()
             if not vtube_ok:
                 logger.error(f"VTube Studio確認失敗: {vtube_message}")
+                self._update_gui(f"VTube Studio確認失敗: {vtube_message}")
                 return False
             logger.info(f"VTube Studio確認成功: {vtube_message}")
+            self._update_gui(f"VTube Studio確認成功: {vtube_message}")
 
             # 1. Meet URL生成
             logger.info("Meet URLを生成中...")
+            self._update_gui("Meet URLを生成中...")
             self.current_meet_url = self.meet_manager.create_meet_space()
 
             # 2. フロントPCに接続
             logger.info("フロントPCに接続中...")
+            self._update_gui("フロントPCに接続中...")
             if not self.communication_client.connect():
                 logger.error("フロントPCに接続できませんでした")
+                self._update_gui("フロントPCへの接続に失敗しました")
                 return False
 
             # 3. Meet URLをフロントPCに送信
             logger.info("Meet URLをフロントPCに送信中...")
+            self._update_gui("Meet URLをフロントPCに送信中...")
             if not self.communication_client.send_meet_url(self.current_meet_url):
                 logger.error("Meet URL送信に失敗しました")
+                self._update_gui("Meet URL送信に失敗しました")
                 return False
 
             # 4. ブラウザセットアップ
@@ -164,7 +185,7 @@ class ReceptionController:
         try:
             logger.info("受付セッション中... (Ctrl+Cで終了)")
             heartbeat_counter = 0
-            
+
             while True:
                 time.sleep(1)
                 heartbeat_counter += 1
@@ -204,7 +225,7 @@ class ReceptionController:
 
             # フロントPCに終了通知
             if self.communication_client.is_connected():
-                self.communication_client.send_command("end_session")
+                self.communication_client.send_command(RemoteCommand.END_SESSION.value)
 
             self.cleanup()
             logger.info("受付セッションを終了しました")

@@ -22,6 +22,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import Config
+from ..utils.platform_utils import PlatformUtils
 
 
 class MeetManager:
@@ -41,9 +42,7 @@ class MeetManager:
         self.driver: webdriver.Chrome | None = None
         self.meet_url: str | None = None
         self.creds: Any = None
-        self.profile_dir = (
-            Path(__file__).parent.parent.parent / ".chrome-profile-remote"
-        )
+        self.profile_dir = PlatformUtils.get_profile_directory("chrome-profile-remote")
         self._process_monitor_thread: threading.Thread | None = None
         self._monitoring = False
         self._on_chrome_exit_callback: Callable[[], None] | None = None
@@ -135,8 +134,9 @@ class MeetManager:
                 driver_pid = self.driver.service.process.pid
                 # ChromeDriverの子プロセスとしてChromeを探す
                 parent_process = psutil.Process(driver_pid)
+                chrome_process_name = PlatformUtils.get_chrome_process_name()
                 for child in parent_process.children(recursive=True):
-                    if "chrome" in child.name().lower():
+                    if chrome_process_name.lower() in child.name().lower():
                         self._chrome_pid = child.pid
                         break
         except Exception as e:
