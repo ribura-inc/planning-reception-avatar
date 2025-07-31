@@ -93,12 +93,11 @@ def main():
 
                 # 接続開始
                 if controller.start_reception_session():
-                    gui.update_status("セッション中", front_ip)
+                    gui.update_status("セッション中")
                     gui.add_log("セッションが開始されました")
-                    # セッション監視
-                    controller.wait_for_chrome_exit()
-                    gui.update_status(ConnectionStatus.NOT_CONNECTED.value)
-                    gui.add_log("セッションが終了しました")
+                    # セッション監視（簡易版）
+                    gui.add_log("セッション中... 手動で終了してください")
+                    # TODO: Chrome監視機能を実装
                 else:
                     gui.update_status(ConnectionStatus.ERROR.value)
                     gui.add_log("接続に失敗しました")
@@ -114,7 +113,7 @@ def main():
         def disconnect_session():
             if controller:
                 gui.add_log("セッションを終了しています...")
-                controller.end_session()
+                # TODO: 適切な終了処理を実装
                 controller.cleanup()
 
         gui.set_connect_callback(connect_to_front)

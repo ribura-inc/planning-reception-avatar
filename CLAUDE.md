@@ -33,27 +33,45 @@ graph LR
 1. **フロントPC起動** (一度起動すれば常時待機)
 
    ```bash
-   python src/front/main.py
+   # Ryeスクリプト使用（推奨）
+   rye run front
+   
+   # または直接実行
+   python -m src.front.main
    ```
 
 2. **リモートPC起動** (フロントPCのIPまたは名前のみ指定)
 
    ```bash
-   # IPアドレス指定
-   python src/remote/main.py 192.168.1.100
+   # Ryeスクリプト使用（推奨） - IPアドレス指定
+   rye run remote 192.168.1.100
    
-   # Tailscaleデバイス名指定
-   python src/remote/main.py front-pc-name
+   # Ryeスクリプト使用（推奨） - Tailscaleデバイス名指定
+   rye run remote front-pc-name
+   
+   # または直接実行
+   python -m src.remote.main 192.168.1.100
+   python -m src.remote.main front-pc-name
    ```
+
+### GUI版実行（開発・デバッグ用）
+
+```bash
+# フロントPC GUI版
+rye run front-gui
+
+# リモートPC GUI版  
+rye run remote-gui
+```
 
 ### 高度なオプション
 
 ```bash
 # 拡張機能チェックをスキップ
-python src/remote/main.py front-pc-name --skip-extension-check
+python -m src.remote.main front-pc-name --skip-extension-check
 
 # Googleアカウントチェックをスキップ  
-python src/remote/main.py front-pc-name --skip-account-check
+python -m src.remote.main front-pc-name --skip-account-check
 ```
 
 ## 自動化フロー

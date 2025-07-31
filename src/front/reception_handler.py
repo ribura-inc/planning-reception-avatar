@@ -55,7 +55,7 @@ class ReceptionHandler:
         self.server.register_handler("command", self._handle_command)
         self.server.register_handler("notification", self._handle_notification)
 
-    def _update_gui(self, status: str, message: str = None, device: str = None) -> None:
+    def _update_gui(self, status: str, message: str | None = None, device: str | None = None) -> None:
         """GUI更新（GUIがある場合のみ）"""
         if self.gui:
             try:

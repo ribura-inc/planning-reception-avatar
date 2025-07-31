@@ -5,30 +5,30 @@ Pydantic モデル定義
 
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from .enums import ConnectionStatus, MessageType, Platform, RemoteCommand
 
 
 class CommunicationMessage(BaseModel):
     """通信メッセージの基本構造"""
+    model_config = ConfigDict(use_enum_values=True)
+    
     type: MessageType
     content: str | None = None
     params: dict[str, Any] | None = None
-
-    class Config:
-        use_enum_values = True
 
 
 class MeetURLMessage(CommunicationMessage):
     """Meet URL送信メッセージ"""
     type: MessageType = MessageType.MEET_URL
-    content: str = Field(..., description="Google Meet URL")
+    content: str | None = Field(default=None, description="Google Meet URL")
 
-    @validator("content")
-    def validate_meet_url(cls, v: str) -> str:  # noqa: N805
+    @field_validator("content")
+    @classmethod
+    def validate_meet_url(cls, v: str | None) -> str | None:
         """Meet URLの妥当性を検証"""
-        if not v.startswith("https://meet.google.com/"):
+        if v is not None and not v.startswith("https://meet.google.com/"):
             raise ValueError("Invalid Meet URL format")
         return v
 
@@ -36,32 +36,29 @@ class MeetURLMessage(CommunicationMessage):
 class CommandMessage(CommunicationMessage):
     """コマンドメッセージ"""
     type: MessageType = MessageType.COMMAND
-    content: RemoteCommand
-
-    class Config:
-        use_enum_values = True
+    content: str | None = None
+    command: RemoteCommand | None = None
 
 
 class NotificationMessage(CommunicationMessage):
     """通知メッセージ"""
     type: MessageType = MessageType.NOTIFICATION
-    content: str
+    content: str | None = None
 
 
 class HeartbeatMessage(CommunicationMessage):
     """ハートビートメッセージ"""
     type: MessageType = MessageType.HEARTBEAT
-    content: str = "ping"
+    content: str | None = "ping"
 
 
 class GUIState(BaseModel):
     """GUI状態管理"""
+    model_config = ConfigDict(use_enum_values=True)
+    
     status: ConnectionStatus
     connected_device: str | None = None
     error_message: str | None = None
-
-    class Config:
-        use_enum_values = True
 
 
 class ConnectionConfig(BaseModel):
@@ -70,8 +67,9 @@ class ConnectionConfig(BaseModel):
     port: int = Field(default=9999, ge=1024, le=65535, description="ポート番号")
     display_name: str = Field(default="Reception", description="Meet表示名")
 
-    @validator("host")
-    def validate_host(cls, v: str) -> str:  # noqa: N805
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, v: str) -> str:
         """ホストアドレスの検証"""
         if not v:
             raise ValueError("Host cannot be empty")
@@ -87,13 +85,12 @@ class SessionConfig(BaseModel):
 
 class ApplicationConfig(BaseModel):
     """アプリケーション設定"""
+    model_config = ConfigDict(use_enum_values=True)
+    
     platform: Platform
     chrome_path: str | None = None
     vtube_studio_path: str | None = None
     profile_directory: str
-
-    class Config:
-        use_enum_values = True
 
 
 class VTubeStudioStatus(BaseModel):
@@ -108,3 +105,10 @@ class ChromeProcessInfo(BaseModel):
     pid: int | None = None
     is_running: bool = False
     current_url: str | None = None
+
+
+class RemoteSettings(BaseModel):
+    """リモートPC設定"""
+    last_connected_device: str | None = None
+    skip_extension_check: bool = False
+    skip_account_check: bool = False

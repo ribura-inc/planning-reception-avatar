@@ -10,6 +10,8 @@ from collections.abc import Callable
 from datetime import datetime
 
 import flet as ft
+from flet.core.colors import Colors
+from flet.core.icons import Icons
 
 from ..models.enums import ConnectionStatus
 from ..models.schemas import GUIState, RemoteSettings
@@ -55,7 +57,7 @@ class RemoteGUI:
                 "VTuber受付システム - リモートPC",
                 size=24,
                 weight=ft.FontWeight.BOLD,
-                color=ft.colors.PRIMARY,
+                color=Colors.PRIMARY,
             ),
             margin=ft.margin.only(bottom=20),
         )
@@ -72,32 +74,37 @@ class RemoteGUI:
 
         self.connect_button = ft.FilledButton(
             text="接続",
-            icon=ft.icons.CONNECT_WITHOUT_CONTACT,
+            icon=Icons.CONNECT_WITHOUT_CONTACT,
             on_click=self._on_connect,
             disabled=False,
         )
 
         self.disconnect_button = ft.FilledButton(
             text="切断",
-            icon=ft.icons.LINK_OFF,
+            icon=Icons.LINK_OFF,
             on_click=self._on_disconnect,
             disabled=True,
             style=ft.ButtonStyle(
-                bgcolor=ft.colors.ERROR,
+                bgcolor=Colors.ERROR,
             ),
         )
 
         connection_card = ft.Card(
             content=ft.Container(
-                content=ft.Column([
-                    ft.Text("接続設定", size=18, weight=ft.FontWeight.BOLD),
-                    ft.Divider(height=1),
-                    ft.Row([
-                        self.target_input,
-                        self.connect_button,
-                        self.disconnect_button,
-                    ], spacing=10),
-                ]),
+                content=ft.Column(
+                    [
+                        ft.Text("接続設定", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Divider(height=1),
+                        ft.Row(
+                            [
+                                self.target_input,
+                                self.connect_button,
+                                self.disconnect_button,
+                            ],
+                            spacing=10,
+                        ),
+                    ]
+                ),
                 padding=20,
             ),
             elevation=2,
@@ -115,41 +122,51 @@ class RemoteGUI:
         self.vtube_status_text = ft.Text(
             "起動前",
             size=14,
-            color=ft.colors.SECONDARY,
+            color=Colors.SECONDARY,
         )
 
         self.chrome_status_text = ft.Text(
             "起動前",
             size=14,
-            color=ft.colors.SECONDARY,
+            color=Colors.SECONDARY,
         )
 
         status_card = ft.Card(
             content=ft.Container(
-                content=ft.Column([
-                    ft.Text("システム状態", size=18, weight=ft.FontWeight.BOLD),
-                    ft.Divider(height=1),
-                    ft.Row([
-                        ft.Text("接続状態:", size=14),
-                        self.status_text,
-                    ]),
-                    ft.Row([
-                        ft.Text("VTube Studio:", size=14),
-                        self.vtube_status_text,
-                    ]),
-                    ft.Row([
-                        ft.Text("Chrome:", size=14),
-                        self.chrome_status_text,
-                    ]),
-                    ft.Row([
-                        ft.Text("プラットフォーム:", size=14),
-                        ft.Text(
-                            PlatformUtils.get_platform().value.capitalize(),
-                            size=14,
-                            color=ft.colors.SECONDARY,
+                content=ft.Column(
+                    [
+                        ft.Text("システム状態", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Divider(height=1),
+                        ft.Row(
+                            [
+                                ft.Text("接続状態:", size=14),
+                                self.status_text,
+                            ]
                         ),
-                    ]),
-                ]),
+                        ft.Row(
+                            [
+                                ft.Text("VTube Studio:", size=14),
+                                self.vtube_status_text,
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Text("Chrome:", size=14),
+                                self.chrome_status_text,
+                            ]
+                        ),
+                        ft.Row(
+                            [
+                                ft.Text("プラットフォーム:", size=14),
+                                ft.Text(
+                                    PlatformUtils.get_platform().value.capitalize(),
+                                    size=14,
+                                    color=Colors.SECONDARY,
+                                ),
+                            ]
+                        ),
+                    ]
+                ),
                 padding=20,
             ),
             elevation=2,
@@ -163,7 +180,7 @@ class RemoteGUI:
 
         self.log_container = ft.Container(
             content=self.log_column,
-            bgcolor=ft.colors.SURFACE_VARIANT,
+            bgcolor=Colors.ON_SURFACE_VARIANT,
             border_radius=8,
             padding=10,
             height=350,
@@ -172,18 +189,24 @@ class RemoteGUI:
 
         log_card = ft.Card(
             content=ft.Container(
-                content=ft.Column([
-                    ft.Row([
-                        ft.Text("ログ", size=18, weight=ft.FontWeight.BOLD),
-                        ft.IconButton(
-                            icon=ft.icons.CLEAR_ALL,
-                            tooltip="ログをクリア",
-                            on_click=self._clear_log,
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.Text("ログ", size=18, weight=ft.FontWeight.BOLD),
+                                ft.IconButton(
+                                    icon=Icons.CLEAR_ALL,
+                                    tooltip="ログをクリア",
+                                    on_click=self._clear_log,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         ),
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    ft.Divider(height=1),
-                    self.log_container,
-                ], expand=True),
+                        ft.Divider(height=1),
+                        self.log_container,
+                    ],
+                    expand=True,
+                ),
                 padding=20,
             ),
             elevation=2,
@@ -191,28 +214,34 @@ class RemoteGUI:
         )
 
         # ボタンエリア
-        button_row = ft.Row([
-            ft.OutlinedButton(
-                text="設定",
-                icon=ft.icons.SETTINGS,
-                on_click=self._on_settings,
-            ),
-            ft.FilledButton(
-                text="終了",
-                icon=ft.icons.CLOSE,
-                on_click=self._on_exit,
-            ),
-        ], alignment=ft.MainAxisAlignment.END)
+        button_row = ft.Row(
+            [
+                ft.OutlinedButton(
+                    text="設定",
+                    icon=Icons.SETTINGS,
+                    on_click=self._on_settings,
+                ),
+                ft.FilledButton(
+                    text="終了",
+                    icon=Icons.CLOSE,
+                    on_click=self._on_exit,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.END,
+        )
 
         # レイアウト構築
         page.add(
-            ft.Column([
-                header,
-                connection_card,
-                status_card,
-                log_card,
-                button_row,
-            ], expand=True)
+            ft.Column(
+                [
+                    header,
+                    connection_card,
+                    status_card,
+                    log_card,
+                    button_row,
+                ],
+                expand=True,
+            )
         )
 
         # 初期ログ
@@ -222,13 +251,13 @@ class RemoteGUI:
     def _get_status_color(self, status: ConnectionStatus) -> str:
         """ステータスに応じた色を取得"""
         color_map = {
-            ConnectionStatus.WAITING: ft.colors.ORANGE,
-            ConnectionStatus.CONNECTING: ft.colors.BLUE,
-            ConnectionStatus.CONNECTED: ft.colors.GREEN,
-            ConnectionStatus.ERROR: ft.colors.RED,
-            ConnectionStatus.DISCONNECTING: ft.colors.ORANGE,
+            ConnectionStatus.WAITING: Colors.ORANGE,
+            ConnectionStatus.CONNECTING: Colors.BLUE,
+            ConnectionStatus.CONNECTED: Colors.GREEN,
+            ConnectionStatus.ERROR: Colors.RED,
+            ConnectionStatus.DISCONNECTING: Colors.ORANGE,
         }
-        return color_map.get(status, ft.colors.PRIMARY)
+        return color_map.get(status, Colors.PRIMARY)
 
     def update_status(self, status: str) -> None:
         """接続ステータスの更新"""
@@ -269,15 +298,13 @@ class RemoteGUI:
                 if self.vtube_status_text:
                     self.vtube_status_text.value = status
                     self.vtube_status_text.color = (
-                        ft.colors.GREEN if status == "起動中" else
-                        ft.colors.SECONDARY
+                        Colors.GREEN if status == "起動中" else Colors.SECONDARY
                     )
             elif app_name.lower() == "chrome" and self.chrome_status_text:
-                    self.chrome_status_text.value = status
-                    self.chrome_status_text.color = (
-                        ft.colors.GREEN if status == "起動中" else
-                        ft.colors.SECONDARY
-                    )
+                self.chrome_status_text.value = status
+                self.chrome_status_text.color = (
+                    Colors.GREEN if status == "起動中" else Colors.SECONDARY
+                )
 
             self.page.update()
 
@@ -286,10 +313,13 @@ class RemoteGUI:
         if self.page and self.log_column:
             timestamp = datetime.now().strftime("%H:%M:%S")
             log_entry = ft.Container(
-                content=ft.Row([
-                    ft.Text(f"[{timestamp}]", size=12, color=ft.colors.SECONDARY),
-                    ft.Text(message, size=12, expand=True),
-                ], spacing=10),
+                content=ft.Row(
+                    [
+                        ft.Text(f"[{timestamp}]", size=12, color=Colors.SECONDARY),
+                        ft.Text(message, size=12, expand=True),
+                    ],
+                    spacing=10,
+                ),
                 padding=ft.padding.symmetric(horizontal=5, vertical=2),
             )
 
@@ -301,12 +331,16 @@ class RemoteGUI:
 
             self.page.update()
 
-            # 最下部にスクロール
-            if self.log_container:
-                self.log_container.scroll_to(
-                    offset=-1,
-                    duration=100,
-                )
+            # 最下部にスクロール（可能な場合のみ）
+            if self.log_container and hasattr(self.log_container, "scroll_to"):
+                try:
+                    self.log_container.scroll_to(  # type: ignore
+                        offset=-1,
+                        duration=100,
+                    )
+                except Exception:
+                    # scroll_toが利用できない場合は無視
+                    pass
 
     def _clear_log(self, e) -> None:
         """ログをクリア"""
@@ -333,6 +367,7 @@ class RemoteGUI:
 
     def _on_settings(self, e) -> None:
         """設定ボタンのハンドラ"""
+
         # 設定ダイアログを表示
         def close_dialog(e):
             dialog.open = False
@@ -358,10 +393,13 @@ class RemoteGUI:
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("設定"),
-            content=ft.Column([
-                skip_extension_check,
-                skip_account_check,
-            ], height=100),
+            content=ft.Column(
+                [
+                    skip_extension_check,
+                    skip_account_check,
+                ],
+                height=100,
+            ),
             actions=[
                 ft.TextButton("キャンセル", on_click=close_dialog),
                 ft.FilledButton("保存", on_click=save_settings),
@@ -369,9 +407,13 @@ class RemoteGUI:
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
-        self.page.dialog = dialog
-        dialog.open = True
-        self.page.update()
+        if hasattr(self.page, "dialog"):
+            self.page.dialog = dialog  # type: ignore
+            dialog.open = True
+            self.page.update()
+        else:
+            # dialogがサポートされていない場合の代替処理
+            self.add_log("設定ダイアログは現在のFletバージョンでサポートされていません")
 
     def _on_exit(self, e) -> None:
         """終了ボタンのハンドラ"""
@@ -403,7 +445,7 @@ class RemoteGUI:
 
 def run_gui(
     connect_callback: Callable[[str], None] | None = None,
-    disconnect_callback: Callable[[], None] | None = None
+    disconnect_callback: Callable[[], None] | None = None,
 ) -> RemoteGUI:
     """GUI をバックグラウンドスレッドで実行"""
     gui = RemoteGUI()
