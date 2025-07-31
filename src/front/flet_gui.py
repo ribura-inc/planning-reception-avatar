@@ -57,7 +57,7 @@ class FrontGUI:
 
         # 接続状態カード
         self.status_text = ft.Text(
-            self.state.status.value,
+            self.state.status,
             size=16,
             weight=ft.FontWeight.W_500,
             color=self._get_status_color(self.state.status),
@@ -189,7 +189,7 @@ class FrontGUI:
                 self.state.connected_device = device
 
             if self.page and self.status_text:
-                self.status_text.value = status_enum.value
+                self.status_text.value = status_enum
                 self.status_text.color = self._get_status_color(status_enum)
 
                 if device and self.device_text:

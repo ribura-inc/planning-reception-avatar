@@ -112,7 +112,7 @@ class RemoteGUI:
 
         # ステータスカード
         self.status_text = ft.Text(
-            self.state.status.value,
+            self.state.status,
             size=16,
             weight=ft.FontWeight.W_500,
             color=self._get_status_color(self.state.status),
@@ -272,7 +272,7 @@ class RemoteGUI:
             self.state.status = status_enum
 
             if self.page and self.status_text:
-                self.status_text.value = status_enum.value
+                self.status_text.value = status_enum
                 self.status_text.color = self._get_status_color(status_enum)
 
                 # ボタンの有効/無効を更新
