@@ -84,9 +84,11 @@ def main():
                 gui.add_log(f"エラー: {e}")
 
         def disconnect_session():
+            nonlocal controller
             if controller:
                 gui.add_log("セッションを終了しています...")
                 controller.cleanup()
+                controller = None
 
         gui.set_connect_callback(connect_to_front)
         gui.set_disconnect_callback(disconnect_session)

@@ -55,7 +55,7 @@ class FrontGUI:
 
         # 接続状態カード
         self.status_text = ft.Text(
-            self.state.status,
+            self.state.status.value,
             size=16,
             weight=ft.FontWeight.W_500,
             color=self._get_status_color(self.state.status),

@@ -6,9 +6,10 @@ Meet URL生成・送信とホスト処理を統合管理する
 import logging
 import time
 
-from ..models.enums import RemoteCommand
+from ..models.enums import ConnectionStatus, RemoteCommand
 from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
+from .flet_gui import RemoteGUI
 from .meet_manager import MeetManager
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class ReceptionController:
         self,
         front_pc_ip: str,
         port: int = 9999,
-        gui=None,
+        gui: RemoteGUI | None = None,
     ):
         """
         Args:
@@ -113,6 +114,8 @@ class ReceptionController:
             logger.info("Meetにホストとして参加中...")
             self.meet_manager.join_as_host(self.current_meet_url)
 
+            time.sleep(2)  # 少し待機してから次の処理へ
+
             # 8. Auto-Admit機能有効化
             logger.info("Auto-Admit機能を有効化中...")
             self.meet_manager.enable_auto_admit()
@@ -195,14 +198,20 @@ class ReceptionController:
                 logger.info("フロントPCに終了通知を送信中...")
                 self.communication_client.send_command(RemoteCommand.END_SESSION.value)
                 time.sleep(1)  # 送信完了を待つ
-            
+
             # リソースのクリーンアップ
             self.meet_manager.cleanup()
             self.communication_client.disconnect()
-            
+
             # 共有Webドライバーのクリーンアップ
             from .webdriver_manager import cleanup_shared_webdriver
+
             cleanup_shared_webdriver()
+
+            # GUI状態を更新
+            if self.gui:
+                self.gui.update_status(ConnectionStatus.NOT_CONNECTED)
+                self.gui.add_log("セッションを終了しました")
         except Exception as e:
             logger.error(f"クリーンアップエラー: {e}")
 
