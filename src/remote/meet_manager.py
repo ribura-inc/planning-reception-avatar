@@ -3,6 +3,7 @@ Google Meet管理クラス（リモートPC用）
 Meet URLの生成、ホストとしての参加、Auto-Admit機能の制御を行う
 """
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -16,16 +17,17 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import Config
 
+logger = logging.getLogger(__name__)
+
 
 class MeetManager:
-    """Google Meet管理クラス"""
+    """Google Meet管理クラス（共有WebDriverを使用）"""
 
     # Google Meet API スコープ
     SCOPES = ["https://www.googleapis.com/auth/meetings.space.created"]
@@ -33,21 +35,13 @@ class MeetManager:
     # 待機時間設定
     BUTTON_WAIT_TIMEOUT = 10
 
-    # 拡張機能情報
-    AUTO_ADMIT_EXTENSION_URL = "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
-    SCREEN_CAPTURE_EXTENSION_URL = "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc"
-
     def __init__(self):
         self.driver: webdriver.Chrome | None = None
         self.meet_url: str | None = None
         self.creds: Any = None
-        self.profile_dir = (
-            Path(__file__).parent.parent.parent / ".chrome-profile-remote"
-        )
         self._process_monitor_thread: threading.Thread | None = None
         self._monitoring = False
         self._on_chrome_exit_callback: Callable[[], None] | None = None
-        self._chrome_pid: int | None = None
 
     def create_meet_space(self) -> str:
         """Google Meet APIを使用して新しいMeetスペースを作成"""
@@ -58,10 +52,9 @@ class MeetManager:
             request = meet_v2.CreateSpaceRequest()
             response = client.create_space(request=request)
             meet_url = response.meeting_uri
-            print(f"新しいMeetスペースを作成: {meet_url}")
             return meet_url
-        except Exception as error:
-            print(f"Meet APIエラー: {error}")
+        except Exception:
+            logger.error("Meetスペースの作成に失敗しました")
             raise
 
     def _authenticate(self) -> None:
@@ -93,61 +86,22 @@ class MeetManager:
         self.creds = creds
 
     def setup_browser(self) -> None:
-        """Chromeブラウザのセットアップ"""
-        options = Options()
+        """共有WebDriverインスタンスを取得してセットアップ"""
+        from .webdriver_manager import get_shared_webdriver
 
-        # プロファイルディレクトリ設定
-        self.profile_dir.mkdir(parents=True, exist_ok=True)
-        options.add_argument(f"--user-data-dir={self.profile_dir}")
-        options.add_argument("--profile-directory=Default")
-
-        # 言語とメディア設定
-        options.add_argument("--lang=ja")
-        options.add_experimental_option(
-            "prefs",
-            {
-                "intl.accept_languages": "ja,en-US,en",
-                "profile.default_content_setting_values.media_stream_mic": 1,
-                "profile.default_content_setting_values.media_stream_camera": 1,
-                "profile.default_content_setting_values.desktop_capture": 1,
-                "profile.default_content_setting_values.geolocation": 0,
-                "profile.default_content_setting_values.notifications": 2,
-            },
-        )
-
-        # その他オプション
-        options.add_argument("--enable-usermedia-screen-capturing")
-        # options.add_argument("--use-fake-ui-for-media-stream") # これは有効にしたらダメ
-        options.add_argument("--auto-select-desktop-capture-source=VTube Studio")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-
-        # ウィンドウサイズ設定
-        options.add_argument("--window-size=1920,1080")
-
-        self.driver = webdriver.Chrome(options=options)
-
-        # ChromeのPIDを取得
         try:
-            # ChromeDriverのPIDから実際のChromeプロセスを特定
-            if hasattr(self.driver.service, "process"):
-                driver_pid = self.driver.service.process.pid
-                # ChromeDriverの子プロセスとしてChromeを探す
-                parent_process = psutil.Process(driver_pid)
-                for child in parent_process.children(recursive=True):
-                    if "chrome" in child.name().lower():
-                        self._chrome_pid = child.pid
-                        break
+            # 共有WebDriverインスタンスを取得
+            self.driver = get_shared_webdriver(headless=False)
+            logger.info("共有WebDriverインスタンスを取得しました")
         except Exception as e:
-            print(f"Chrome PID取得エラー: {e}")
+            logger.error(f"共有WebDriverの取得に失敗: {e}")
+            raise
 
     def join_as_host(self, meet_url: str) -> None:
         """Meetにホストとして参加"""
         if not self.driver:
             raise ValueError("ブラウザが初期化されていません")
 
-        print(f"Meeting URLを開く: {meet_url}")
         self.driver.get(meet_url)
 
         # 参加ボタンをクリック
@@ -163,7 +117,6 @@ class MeetManager:
 
         if join_button:
             join_button.click()
-            print("会議に参加しました")
         else:
             raise TimeoutException("参加ボタンが見つかりませんでした")
 
@@ -172,7 +125,7 @@ class MeetManager:
         if not self.driver:
             raise ValueError("ブラウザが初期化されていません")
 
-        print("Auto-Admit機能を有効化中...")
+        logger.info("Auto-Admit機能を有効化中...")
 
         auto_admit_button = None
         try:
@@ -190,72 +143,11 @@ class MeetManager:
             is_pressed = auto_admit_button.get_attribute("aria-pressed") == "true"
             if not is_pressed:
                 auto_admit_button.click()
-                print("Auto-Admit機能を有効にしました")
+                logger.info("Auto-Admit機能を有効にしました")
             else:
-                print("Auto-Admit機能は既に有効です")
+                logger.info("Auto-Admit機能は既に有効です")
         else:
-            print("Auto-Admitボタンが見つかりませんでした")
-
-    def check_extension(self, extension_url: str, extension_name: str) -> bool:
-        """拡張機能がインストールされているか確認"""
-        if not self.driver:
-            return False
-
-        print(f"{extension_name}拡張機能の確認中...")
-
-        # 拡張機能ページを開く
-        self.driver.get(extension_url)
-        time.sleep(3)
-
-        # 「Chrome から削除」ボタンが存在するかチェック（インストール済みの場合）
-        try:
-            WebDriverWait(self.driver, 3).until(
-                expected_conditions.presence_of_element_located(
-                    (By.XPATH, Config.ChromeExtension.REMOVE_BUTTON_XPATH)
-                )
-            )
-            print(f"{extension_name}拡張機能は既にインストールされています")
-            return True
-        except TimeoutException:
-            pass
-
-        # 「Chrome に追加」ボタンが存在するかチェック（未インストールの場合）
-        try:
-            WebDriverWait(self.driver, 3).until(
-                expected_conditions.presence_of_element_located(
-                    (By.XPATH, Config.ChromeExtension.ADD_BUTTON_XPATH)
-                )
-            )
-            print(f"{extension_name}拡張機能がインストールされていません")
-            return False
-        except TimeoutException:
-            pass
-
-        print(f"{extension_name}拡張機能の状態を確認できませんでした")
-        return False
-
-    def ensure_google_login(self) -> bool:
-        """Googleアカウントへのログイン確認"""
-        if not self.driver:
-            return False
-
-        print("Googleアカウントのログイン状態を確認中...")
-        self.driver.get("https://myaccount.google.com/")
-        time.sleep(3)
-
-        try:
-            current_url = self.driver.current_url
-            if "myaccount.google.com" in current_url and "signin" not in current_url:
-                print("Googleアカウントにログイン済みです")
-                return True
-        except Exception:
-            pass
-
-        print("Googleアカウントにログインしてください...")
-        self.driver.get("https://accounts.google.com/signin")
-        print("ブラウザでMeet APIで使用したGoogleアカウントにログインしてください。")
-        input("ログイン完了後、Enterキーを押してください: ")
-        return True
+            logger.warning("Auto-Admitボタンが見つかりませんでした")
 
     def is_session_active(self) -> bool:
         """Chromeとセッションが有効かどうかを確認"""
@@ -284,46 +176,53 @@ class MeetManager:
 
     def start_process_monitoring(self) -> None:
         """Chromeプロセスの監視を開始"""
+
         if not self._monitoring:
             self._monitoring = True
             self._process_monitor_thread = threading.Thread(
                 target=self._monitor_chrome_process, daemon=True
             )
             self._process_monitor_thread.start()
-            print("Chromeプロセス監視を開始しました")
+            logger.info("Chromeプロセス監視を開始しました")
 
     def stop_process_monitoring(self) -> None:
         """Chromeプロセスの監視を停止"""
         self._monitoring = False
         if self._process_monitor_thread and self._process_monitor_thread.is_alive():
             self._process_monitor_thread.join(timeout=2)
-        print("Chromeプロセス監視を停止しました")
+        logger.info("Chromeプロセス監視を停止しました")
 
     def _monitor_chrome_process(self) -> None:
         """Chromeプロセスを監視"""
+        from .webdriver_manager import (
+            get_shared_webdriver_chrome_pid,
+            is_shared_webdriver_active,
+        )
+
         while self._monitoring:
             try:
-                # ドライバーの状態チェック
-                if not self.driver:
-                    print("Chromeドライバーが終了しました")
+                # 共有WebDriverの状態チェック
+                if not is_shared_webdriver_active():
+                    logger.info("共有WebDriverが終了しました")
                     if self._on_chrome_exit_callback:
                         self._on_chrome_exit_callback()
                     break
 
                 # PIDによるプロセス監視
-                if self._chrome_pid:
+                chrome_pid = get_shared_webdriver_chrome_pid()
+                if chrome_pid:
                     try:
-                        chrome_process = psutil.Process(self._chrome_pid)
+                        chrome_process = psutil.Process(chrome_pid)
                         if not chrome_process.is_running():
-                            print(
-                                f"Chromeプロセス (PID: {self._chrome_pid}) が終了しました"
+                            logger.info(
+                                f"Chromeプロセス (PID: {chrome_pid}) が終了しました"
                             )
                             if self._on_chrome_exit_callback:
                                 self._on_chrome_exit_callback()
                             break
                     except psutil.NoSuchProcess:
-                        print(
-                            f"Chromeプロセス (PID: {self._chrome_pid}) が見つかりません"
+                        logger.info(
+                            f"Chromeプロセス (PID: {chrome_pid}) が見つかりません"
                         )
                         if self._on_chrome_exit_callback:
                             self._on_chrome_exit_callback()
@@ -331,7 +230,7 @@ class MeetManager:
 
                 # Meetセッション状態チェック
                 if not self.is_session_active():
-                    print("Meetセッションが終了しました")
+                    logger.info("Meetセッションが終了しました")
                     if self._on_chrome_exit_callback:
                         self._on_chrome_exit_callback()
                     break
@@ -339,17 +238,26 @@ class MeetManager:
                 time.sleep(2)  # 2秒ごとにチェック
 
             except Exception as e:
-                print(f"プロセス監視エラー: {e}")
+                logger.error(f"プロセス監視エラー: {e}")
                 time.sleep(5)
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
+        from .webdriver_manager import release_shared_webdriver
+
         self.stop_process_monitoring()
         if self.driver:
             try:
-                self.driver.quit()
-            except Exception as e:
-                print(f"Chrome終了エラー: {e}")
-            finally:
+                # 共有WebDriverの参照を解放
+                release_shared_webdriver()
                 self.driver = None
-                self._chrome_pid = None
+                logger.info("MeetManagerのクリーンアップが完了しました")
+            except Exception as e:
+                logger.error(f"クリーンアップエラー: {e}")
+
+    @classmethod
+    def cleanup_shared_driver(cls) -> None:
+        """共有ドライバーのクリーンアップ（互換性のため残す）"""
+        from .webdriver_manager import cleanup_shared_webdriver
+
+        cleanup_shared_webdriver()

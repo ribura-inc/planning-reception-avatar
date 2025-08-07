@@ -28,6 +28,7 @@ dependencies = [
     "selenium>=4.33.0",
     "pyautogui>=0.9.54",
     "psutil>=5.9.0",
+    "flet[all]>=0.28.3",
 ]
 readme = "README.md"
 license = { text = "Proprietary" }
@@ -74,9 +75,13 @@ dev-dependencies = [
 ]
 
 [tool.rye.scripts]
-# 開発サーバー
-dev = "uvicorn src.backend.main:app --reload --host 0.0.0.0 --port 8000"
-frontend-dev = "python -m src.frontend.main --debug"
+# メインアプリケーション実行
+front = "python -m src.front.main"
+remote = "python -m src.remote.main"
+
+# GUI版実行（開発用）
+front-gui = "python -m src.front.flet_gui"
+remote-gui = "python -m src.remote.flet_gui"
 
 # テスト
 test = "pytest -v"
@@ -87,19 +92,9 @@ lint = "ruff check ."
 format = "ruff format ."
 typecheck = "pyright"
 
-# ドキュメント
-docs = "python -m mkdocs serve"
-
-# デバッグ
-debug-meet = "python -m src.debug.test_meet_api"
-debug-vtube = "python -m src.debug.test_vtube"
-debug-obs = "python -m src.debug.test_obs"
-health-check = "python -m src.debug.health_check"
-
-# Celeryワーカー
-worker = "celery -A src.tasks.app worker --loglevel=info"
-beat = "celery -A src.tasks.app beat --loglevel=info"
-flower = "celery -A src.tasks.app flower"
+# ツール
+check-vtube = "python -m src.utils.vtube_studio_utils"
+check-tailscale = "python -m src.utils.tailscale_utils"
 
 [tool.hatch.metadata]
 allow-direct-references = true

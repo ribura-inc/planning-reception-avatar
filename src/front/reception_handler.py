@@ -8,13 +8,10 @@ import threading
 import time
 from typing import Any
 
+from ..models.enums import ConnectionStatus, MessageType, RemoteCommand
 from .communication_server import CommunicationServer
 from .meet_participant import MeetParticipant
 
-# ロギング設定
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -22,17 +19,23 @@ class ReceptionHandler:
     """フロントPC用受付処理ハンドラー"""
 
     def __init__(
-        self, host: str = "0.0.0.0", port: int = 9999, display_name: str = "Reception"
+        self,
+        host: str = "0.0.0.0",
+        port: int = 9999,
+        display_name: str = "Reception",
+        gui: Any = None,
     ):
         """
         Args:
             host: サーバーのホスト
             port: サーバーのポート
             display_name: Meet表示名
+            gui: GUIオブジェクト（オプション）
         """
         self.host = host
         self.port = port
         self.display_name = display_name
+        self.gui = gui
 
         # コンポーネント初期化
         self.server = CommunicationServer(host, port)
@@ -47,9 +50,21 @@ class ReceptionHandler:
 
     def _register_handlers(self) -> None:
         """メッセージハンドラーを登録"""
-        self.server.register_handler("meet_url", self._handle_meet_url)
+        self.server.register_handler(MessageType.MEET_URL.value, self._handle_meet_url)
         self.server.register_handler("command", self._handle_command)
         self.server.register_handler("notification", self._handle_notification)
+
+    def _update_gui(
+        self, status: str, message: str | None = None, device: str | None = None
+    ) -> None:
+        """GUI更新（GUIがある場合のみ）"""
+        if self.gui:
+            try:
+                self.gui.update_status(status, device)
+                if message:
+                    self.gui.add_log(message)
+            except Exception as e:
+                logger.error(f"GUI更新エラー: {e}")
 
     def _handle_meet_url(self, data: dict[str, Any]) -> None:
         """Meet URL受信処理"""
@@ -60,6 +75,11 @@ class ReceptionHandler:
 
         logger.info(f"Meet URL受信: {meet_url}")
         self.current_meet_url = meet_url
+        self._update_gui(
+            ConnectionStatus.CONNECTING.value,
+            f"Meet URLを受信: {meet_url}",
+            "remote-pc",
+        )
 
         # Meet参加処理
         self._join_meeting(meet_url)
@@ -71,8 +91,9 @@ class ReceptionHandler:
 
         logger.info(f"コマンド受信: {command}")
 
-        if command == "end_session":
+        if command == RemoteCommand.END_SESSION.value:
             logger.info("リモートPCからセッション終了要求を受信")
+            self._update_gui("切断中", "リモートPCからセッション終了要求を受信")
             self._end_session()
         elif command == "leave_meeting":
             self._leave_meeting()
@@ -84,6 +105,7 @@ class ReceptionHandler:
                 logger.error("参加するMeet URLが指定されていません")
         elif command == "force_cleanup":
             logger.info("強制クリーンアップ要求を受信")
+            self._update_gui("切断中", "強制クリーンアップ要求を受信")
             self._force_cleanup()
         else:
             logger.warning(f"未知のコマンド: {command}")
@@ -92,7 +114,7 @@ class ReceptionHandler:
         """通知処理"""
         message = data.get("content", "")
         # ハートビートは無視
-        if message != "heartbeat":
+        if message != MessageType.HEARTBEAT.value:
             logger.info(f"通知: {message}")
 
     def _join_meeting(self, meet_url: str) -> None:
@@ -110,12 +132,17 @@ class ReceptionHandler:
             # Meet参加
             if self.meet_participant.join_meeting(meet_url):
                 logger.info("Meetへの参加が完了しました")
+                self._update_gui(
+                    ConnectionStatus.CONNECTED.value, "Meetへの参加が完了しました"
+                )
             else:
                 logger.error("Meetへの参加に失敗しました")
+                self._update_gui(
+                    ConnectionStatus.ERROR.value, "Meetへの参加に失敗しました"
+                )
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
-
 
     def _leave_meeting(self) -> None:
         """Meetから退出"""
@@ -143,6 +170,12 @@ class ReceptionHandler:
             self.current_meet_url = None
 
             logger.info("セッション終了処理が完了しました")
+            self._update_gui(
+                ConnectionStatus.WAITING.value, "セッション終了処理が完了しました"
+            )
+            if self.gui and self.gui.window:
+                self.gui.connected_device = None
+                self.gui.window["-DEVICE-"].update("なし")
         except Exception as e:
             logger.error(f"セッション終了処理エラー: {e}")
 
@@ -232,6 +265,10 @@ class ReceptionHandler:
 
             logger.info(f"受付サービスが開始されました (ポート: {self.port})")
             logger.info("リモートPCからの接続を待機中...")
+            self._update_gui(
+                ConnectionStatus.WAITING.value,
+                f"サーバーを開始しました (ポート: {self.port})",
+            )
 
             # 切断監視を開始
             self._start_disconnection_monitoring()

@@ -4,38 +4,79 @@
 リモートPCからのMeet URL受信とMeet参加を処理する
 """
 
+import argparse
+import logging
 import sys
-from pathlib import Path
+import threading
 
-# プロジェクトルートをパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from src.front.flet_gui import FrontGUI
+from src.front.reception_handler import ReceptionHandler
 
-from src.front.reception_handler import ReceptionHandler  # noqa: E402
+logger = logging.getLogger(__name__)
 
 
 def main():
     """メイン処理"""
-    # シンプルな設定（オプション削減）
-    print("=== VTuber受付システム - フロントPC ===")
-    print("受付待機中...")
-
-    # 受付ハンドラーを初期化（固定設定）
-    handler = ReceptionHandler(
-        host="0.0.0.0", port=9999, display_name="Reception"
+    parser = argparse.ArgumentParser(description="VTuber受付システム - フロントPC")
+    parser.add_argument("--no-gui", action="store_true", help="GUIなしで実行")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="待ち受けホスト (デフォルト: 0.0.0.0)"
     )
+    parser.add_argument(
+        "--port", type=int, default=9999, help="待ち受けポート (デフォルト: 9999)"
+    )
+    parser.add_argument(
+        "--display-name", default="Reception", help="Meet表示名 (デフォルト: Reception)"
+    )
+    args = parser.parse_args()
 
-    try:
-        # 受付サービスを実行
-        handler.run()
-    except KeyboardInterrupt:
-        print("\n終了要求を受信しました")
-    except Exception as e:
-        print(f"エラー: {e}")
-        sys.exit(1)
-    finally:
-        handler.stop_reception()
-        print("プログラムを終了します")
+    if args.no_gui:
+        # CUIモード
+        logger.info("=== VTuber受付システム - フロントPC ===")
+        logger.info("受付待機中...")
+
+        handler = ReceptionHandler(
+            host=args.host, port=args.port, display_name=args.display_name
+        )
+
+        try:
+            handler.run()
+        except KeyboardInterrupt:
+            logger.info("終了要求を受信しました")
+        except Exception as e:
+            logger.error(f"エラー: {e}")
+            sys.exit(1)
+        finally:
+            handler.stop_reception()
+            logger.info("プログラムを終了します")
+    else:
+        # GUIモード
+        gui = FrontGUI()
+        handler = None
+
+        def run_handler():
+            nonlocal handler
+            handler = ReceptionHandler(
+                host=args.host,
+                port=args.port,
+                display_name=args.display_name,
+                gui=gui,  # GUIオブジェクトを渡す
+            )
+            handler.run()
+
+        # ハンドラーをバックグラウンドで実行
+        handler_thread = threading.Thread(target=run_handler, daemon=True)
+        handler_thread.start()
+
+        # GUIを実行（メインスレッド）
+        try:
+            gui.run()
+        except Exception as e:
+            logger.error(f"GUIエラー: {e}")
+        finally:
+            if handler:
+                handler.stop_reception()
+            logger.info("プログラムを終了します")
 
 
 if __name__ == "__main__":

@@ -4,63 +4,37 @@ VTube Studioの実行状態確認
 """
 
 import logging
-import os
-import subprocess
 import time
+
+from .platform_utils import PlatformUtils
 
 logger = logging.getLogger(__name__)
 
 
 def _check_vtube_studio_running() -> bool:
     """VTube Studioプロセスが実行中かを確認"""
-    try:
-        result = subprocess.run(
-            ["pgrep", "-f", "VTube Studio"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-
-        if result.returncode == 0:
-            logger.info("VTube Studio process is running")
-            return True
-        else:
-            logger.warning("VTube Studio process not found")
-            return False
-
-    except subprocess.TimeoutExpired:
-        logger.error("Timeout while checking VTube Studio process")
-        return False
-    except Exception as e:
-        logger.error(f"Error checking VTube Studio process: {e}")
-        return False
+    return PlatformUtils.check_process_running("VTube Studio")
 
 
 def _launch_vtube_studio() -> bool:
     """VTube Studioを起動"""
     try:
-        # VTube Studioの一般的なインストールパス
-        vtube_paths = [
-            "/Applications/VTube Studio.app",
-        ]
-
-        vtube_path = None
-        for path in vtube_paths:
-            if os.path.exists(path):
-                vtube_path = path
-                break
+        # プラットフォーム別のパスを取得
+        vtube_paths = PlatformUtils.get_vtube_studio_paths()
+        vtube_path = PlatformUtils.find_executable(vtube_paths)
 
         if not vtube_path:
             logger.error("VTube Studio application not found")
             return False
 
         logger.info(f"Starting VTube Studio from: {vtube_path}")
-        subprocess.Popen(["open", vtube_path])
 
-        # 起動まで少し待機
-        time.sleep(3)
-
-        return True
+        if PlatformUtils.launch_application(vtube_path):
+            # 起動まで少し待機
+            time.sleep(3)
+            return _check_vtube_studio_running()
+        else:
+            return False
 
     except Exception as e:
         logger.error(f"Failed to launch VTube Studio: {e}")
