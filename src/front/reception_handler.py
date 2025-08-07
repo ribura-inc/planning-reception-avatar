@@ -10,6 +10,7 @@ from typing import Any
 
 from ..models.enums import ConnectionStatus, MessageType, RemoteCommand
 from .communication_server import CommunicationServer
+from .flet_gui import FrontGUI
 from .meet_participant import MeetParticipant
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class ReceptionHandler:
         host: str = "0.0.0.0",
         port: int = 9999,
         display_name: str = "Reception",
-        gui: Any = None,
+        gui: FrontGUI | None = None,
     ):
         """
         Args:
@@ -48,6 +49,9 @@ class ReceptionHandler:
         # 切断監視フラグ
         self._monitoring_disconnection = False
 
+        # Chrome監視フラグ
+        self._monitoring_chrome = False
+
     def _register_handlers(self) -> None:
         """メッセージハンドラーを登録"""
         self.server.register_handler(MessageType.MEET_URL.value, self._handle_meet_url)
@@ -55,12 +59,15 @@ class ReceptionHandler:
         self.server.register_handler("notification", self._handle_notification)
 
     def _update_gui(
-        self, status: str, message: str | None = None, device: str | None = None
+        self,
+        status_enum: ConnectionStatus,
+        message: str | None = None,
+        device: str | None = None,
     ) -> None:
         """GUI更新（GUIがある場合のみ）"""
         if self.gui:
             try:
-                self.gui.update_status(status, device)
+                self.gui.update_status(status_enum, device)
                 if message:
                     self.gui.add_log(message)
             except Exception as e:
@@ -76,7 +83,7 @@ class ReceptionHandler:
         logger.info(f"Meet URL受信: {meet_url}")
         self.current_meet_url = meet_url
         self._update_gui(
-            ConnectionStatus.CONNECTING.value,
+            ConnectionStatus.CONNECTING,
             f"Meet URLを受信: {meet_url}",
             "remote-pc",
         )
@@ -93,7 +100,9 @@ class ReceptionHandler:
 
         if command == RemoteCommand.END_SESSION.value:
             logger.info("リモートPCからセッション終了要求を受信")
-            self._update_gui("切断中", "リモートPCからセッション終了要求を受信")
+            self._update_gui(
+                ConnectionStatus.DISCONNECTING, "リモートPCからセッション終了要求を受信"
+            )
             self._end_session()
         elif command == "leave_meeting":
             self._leave_meeting()
@@ -105,7 +114,9 @@ class ReceptionHandler:
                 logger.error("参加するMeet URLが指定されていません")
         elif command == "force_cleanup":
             logger.info("強制クリーンアップ要求を受信")
-            self._update_gui("切断中", "強制クリーンアップ要求を受信")
+            self._update_gui(
+                ConnectionStatus.DISCONNECTING, "強制クリーンアップ要求を受信"
+            )
             self._force_cleanup()
         else:
             logger.warning(f"未知のコマンド: {command}")
@@ -133,13 +144,13 @@ class ReceptionHandler:
             if self.meet_participant.join_meeting(meet_url):
                 logger.info("Meetへの参加が完了しました")
                 self._update_gui(
-                    ConnectionStatus.CONNECTED.value, "Meetへの参加が完了しました"
+                    ConnectionStatus.CONNECTED, "Meetへの参加が完了しました"
                 )
+                # Chrome監視を開始
+                self._start_chrome_monitoring()
             else:
                 logger.error("Meetへの参加に失敗しました")
-                self._update_gui(
-                    ConnectionStatus.ERROR.value, "Meetへの参加に失敗しました"
-                )
+                self._update_gui(ConnectionStatus.ERROR, "Meetへの参加に失敗しました")
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
@@ -171,11 +182,8 @@ class ReceptionHandler:
 
             logger.info("セッション終了処理が完了しました")
             self._update_gui(
-                ConnectionStatus.WAITING.value, "セッション終了処理が完了しました"
+                ConnectionStatus.WAITING, "セッション終了処理が完了しました"
             )
-            if self.gui and self.gui.window:
-                self.gui.connected_device = None
-                self.gui.window["-DEVICE-"].update("なし")
         except Exception as e:
             logger.error(f"セッション終了処理エラー: {e}")
 
@@ -254,6 +262,38 @@ class ReceptionHandler:
         self._monitoring_disconnection = False
         logger.info("クライアント切断監視を停止しました")
 
+    def _start_chrome_monitoring(self) -> None:
+        """Chrome監視を開始"""
+        if not self._monitoring_chrome:
+            self._monitoring_chrome = True
+            monitor_thread = threading.Thread(target=self._monitor_chrome, daemon=True)
+            monitor_thread.start()
+            logger.info("Chrome監視を開始しました")
+
+    def _monitor_chrome(self) -> None:
+        """Chromeプロセスを監視"""
+        while self._monitoring_chrome and self.meet_participant:
+            try:
+                if not self.meet_participant.is_chrome_running():
+                    logger.info("Chromeが終了されました")
+                    self._update_gui(ConnectionStatus.WAITING, "Chromeが終了されました")
+                    # Meetから退出処理
+                    self._leave_meeting()
+                    # 現在のMeet URLもクリア
+                    self.current_meet_url = None
+                    break
+
+                time.sleep(2)
+
+            except Exception as e:
+                logger.error(f"Chrome監視エラー: {e}")
+                time.sleep(5)
+
+    def _stop_chrome_monitoring(self) -> None:
+        """Chrome監視を停止"""
+        self._monitoring_chrome = False
+        logger.info("Chrome監視を停止しました")
+
     def start_reception(self) -> bool:
         """受付サービスを開始"""
         try:
@@ -266,7 +306,7 @@ class ReceptionHandler:
             logger.info(f"受付サービスが開始されました (ポート: {self.port})")
             logger.info("リモートPCからの接続を待機中...")
             self._update_gui(
-                ConnectionStatus.WAITING.value,
+                ConnectionStatus.WAITING,
                 f"サーバーを開始しました (ポート: {self.port})",
             )
 
@@ -296,6 +336,9 @@ class ReceptionHandler:
 
             # 切断監視を停止
             self._stop_disconnection_monitoring()
+
+            # Chrome監視を停止
+            self._stop_chrome_monitoring()
 
             # Meet退出
             self._leave_meeting()

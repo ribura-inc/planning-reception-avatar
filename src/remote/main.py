@@ -61,7 +61,7 @@ def main():
         def connect_to_front(front_ip: str):
             nonlocal controller
             try:
-                gui.update_status(ConnectionStatus.CONNECTING.value)
+                gui.update_status(ConnectionStatus.CONNECTING)
                 gui.add_log(f"{front_ip} への接続を開始...")
 
                 # コントローラーを初期化
@@ -73,14 +73,14 @@ def main():
 
                 # 接続開始
                 if controller.start_reception_session():
-                    gui.update_status(ConnectionStatus.CONNECTED.value)
+                    gui.update_status(ConnectionStatus.CONNECTED)
                     gui.add_log("セッションが開始されました")
                 else:
-                    gui.update_status(ConnectionStatus.ERROR.value)
+                    gui.update_status(ConnectionStatus.ERROR)
                     gui.add_log("接続に失敗しました")
 
             except Exception as e:
-                gui.update_status(ConnectionStatus.ERROR.value)
+                gui.update_status(ConnectionStatus.ERROR)
                 gui.add_log(f"エラー: {e}")
 
         def disconnect_session():

@@ -39,7 +39,7 @@ class RemoteGUI:
         self.log_column: ft.Column | None = None
         self.log_container: ft.Container | None = None
         self.vtube_status_text: ft.Text | None = None
-        self.chrome_status_text: ft.Text | None = None
+
 
         # Chrome拡張機能個別ステータス
         self.auto_admit_status: ft.Text | None = None
@@ -144,12 +144,7 @@ class RemoteGUI:
             color=Colors.SECONDARY,
         )
 
-        # Chrome メインステータス
-        self.chrome_status_text = ft.Text(
-            "起動前",
-            size=14,
-            color=Colors.SECONDARY,
-        )
+
 
         # Chrome拡張機能個別ステータス
         self.auto_admit_status = ft.Text(
@@ -214,8 +209,7 @@ class RemoteGUI:
                         ),
                         ft.Row(
                             [
-                                ft.Text("Chrome:", size=14),
-                                self.chrome_status_text,
+                                ft.Text("Chrome:", size=14)
                             ]
                         ),
                         # Chrome拡張機能の詳細ステータス（インデント表示）
@@ -365,20 +359,14 @@ class RemoteGUI:
         }
         return color_map.get(status, Colors.PRIMARY)
 
-    def update_status(self, status: str) -> None:
+    def update_status(self, status_enum: ConnectionStatus) -> None:
         """接続ステータスの更新"""
         try:
-            # Enumに変換
-            if status in [s.value for s in ConnectionStatus]:
-                status_enum = ConnectionStatus(status)
-            else:
-                logger.warning(f"Unknown status: {status}")
-                return
 
             self.state.status = status_enum
 
             if self.page and self.status_text:
-                self.status_text.value = status_enum
+                self.status_text.value = status_enum.value
                 self.status_text.color = self._get_status_color(status_enum)
 
                 # ボタンの有効/無効を更新
@@ -406,11 +394,7 @@ class RemoteGUI:
                     self.vtube_status_text.color = (
                         Colors.GREEN if status == "起動中" else Colors.SECONDARY
                     )
-            elif app_name.lower() == "chrome" and self.chrome_status_text:
-                self.chrome_status_text.value = status
-                self.chrome_status_text.color = (
-                    Colors.GREEN if status == "起動中" else Colors.SECONDARY
-                )
+
 
             self.page.update()
 
@@ -515,6 +499,18 @@ class RemoteGUI:
 
         def check_thread():
             try:
+                # VTube Studioの状態チェック
+                from src.utils.vtube_studio_utils import check_and_setup_vtube_studio
+                vtube_ok, vtube_message = check_and_setup_vtube_studio()
+                if self.page and self.vtube_status_text:
+                    self.vtube_status_text.value = "起動中" if vtube_ok else "起動前"
+                    self.vtube_status_text.color = (
+                        Colors.GREEN if vtube_ok else Colors.SECONDARY
+                    )
+                    self.page.update()
+                if vtube_ok:
+                    self.add_log(f"VTube Studio: {vtube_message}")
+                
                 self.add_log("システムチェックを開始しています...")
 
                 # PrecheckManagerのインスタンスを作成

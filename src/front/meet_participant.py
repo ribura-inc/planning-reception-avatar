@@ -37,6 +37,10 @@ class MeetParticipant:
         self.display_name = display_name
         self.driver: webdriver.Chrome | None = None
 
+    def is_chrome_running(self) -> bool:
+        """Chromeが実行中かチェック"""
+        return self.driver is not None
+
     def setup_browser(self) -> None:
         """Chromeブラウザのセットアップ"""
         options = Options()

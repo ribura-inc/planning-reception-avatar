@@ -4,8 +4,6 @@
 """
 
 import logging
-import threading
-import time
 from collections.abc import Callable
 from datetime import datetime
 
@@ -174,22 +172,17 @@ class FrontGUI:
         }
         return color_map.get(status, Colors.PRIMARY)
 
-    def update_status(self, status: str, device: str | None = None) -> None:
+    def update_status(
+        self, status_enum: ConnectionStatus, device: str | None = None
+    ) -> None:
         """ステータスの更新"""
         try:
-            # Enumに変換
-            if status in [s.value for s in ConnectionStatus]:
-                status_enum = ConnectionStatus(status)
-            else:
-                logger.warning(f"Unknown status: {status}")
-                return
-
             self.state.status = status_enum
             if device:
                 self.state.connected_device = device
 
             if self.page and self.status_text:
-                self.status_text.value = status_enum
+                self.status_text.value = status_enum.value
                 self.status_text.color = self._get_status_color(status_enum)
 
                 if device and self.device_text:
@@ -246,10 +239,6 @@ class FrontGUI:
         """終了ボタンのハンドラ"""
         self.stop()
 
-    def set_status_callback(self, callback: Callable[[str], None]) -> None:
-        """ステータス変更時のコールバックを設定"""
-        self._status_callback = callback
-
     def run(self) -> None:
         """GUIを実行"""
         self._running = True
@@ -264,18 +253,3 @@ class FrontGUI:
         self._running = False
         if self.page:
             self.page.window.close()
-
-
-def run_gui(status_callback: Callable[[str], None] | None = None) -> FrontGUI:
-    """GUI をバックグラウンドスレッドで実行"""
-    gui = FrontGUI()
-    if status_callback:
-        gui.set_status_callback(status_callback)
-
-    thread = threading.Thread(target=gui.run, daemon=True)
-    thread.start()
-
-    # GUIの初期化を待つ
-    time.sleep(0.5)
-
-    return gui

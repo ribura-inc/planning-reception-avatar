@@ -189,21 +189,20 @@ class ReceptionController:
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        from .webdriver_manager import cleanup_shared_webdriver
-
         try:
+            # フロントPCに終了通知を送信（接続中の場合）
+            if self.communication_client.is_connected():
+                logger.info("フロントPCに終了通知を送信中...")
+                self.communication_client.send_command(RemoteCommand.END_SESSION.value)
+                time.sleep(1)  # 送信完了を待つ
+            
+            # リソースのクリーンアップ
             self.meet_manager.cleanup()
             self.communication_client.disconnect()
-            # 共有Webドライバーのクリーンアップも実行
+            
+            # 共有Webドライバーのクリーンアップ
+            from .webdriver_manager import cleanup_shared_webdriver
             cleanup_shared_webdriver()
-        except Exception as e:
-            logger.error(f"クリーンアップエラー: {e}")
-        """リソースのクリーンアップ"""
-        try:
-            self.meet_manager.cleanup()
-            self.communication_client.disconnect()
-            # 共有Webドライバーのクリーンアップも実行
-            MeetManager.cleanup_shared_driver()
         except Exception as e:
             logger.error(f"クリーンアップエラー: {e}")
 
