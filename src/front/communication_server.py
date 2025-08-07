@@ -63,16 +63,16 @@ class CommunicationServer:
             my_ip = TailscaleUtils.get_my_tailscale_ip()
             if my_ip:
                 logger.info(f"このデバイスのTailscale IP: {my_ip}")
-                print("\n=== Tailscale情報 ===")
-                print(f"このデバイスのIP: {my_ip}")
+                logger.info("=== Tailscale情報 ===")
+                logger.info(f"このデバイスのIP: {my_ip}")
 
                 # 利用可能なデバイス一覧を表示
                 devices = TailscaleUtils.get_tailscale_devices()
                 if devices:
-                    print("利用可能なデバイス:")
+                    logger.info("利用可能なデバイス:")
                     for hostname, ip in devices.items():
-                        print(f"  - {hostname}: {ip}")
-                print("=" * 20 + "\n")
+                        logger.info(f"  - {hostname}: {ip}")
+                logger.info("=" * 20)
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -120,7 +120,9 @@ class CommunicationServer:
         # クライアント接続をリストに追加
         with self._clients_lock:
             self.clients.add((client_socket, client_address))
-        logger.info(f"クライアント接続追加: {client_address} (総数: {len(self.clients)})")
+        logger.info(
+            f"クライアント接続追加: {client_address} (総数: {len(self.clients)})"
+        )
 
         try:
             client_socket.settimeout(30)  # 30秒タイムアウト
@@ -132,9 +134,11 @@ class CommunicationServer:
                     if not length_bytes:
                         break
 
-                    message_length = int.from_bytes(length_bytes, 'big')
+                    message_length = int.from_bytes(length_bytes, "big")
                     if message_length > 10 * 1024 * 1024:  # 10MB以上はエラー
-                        logger.error(f"メッセージが大きすぎます: {message_length}バイト")
+                        logger.error(
+                            f"メッセージが大きすぎます: {message_length}バイト"
+                        )
                         break
 
                     # 実際のメッセージを受信
@@ -143,7 +147,9 @@ class CommunicationServer:
                         break
 
                     message = message_bytes.decode("utf-8")
-                    logger.info(f"メッセージ受信 from {client_address}: {message[:100]}...")
+                    logger.info(
+                        f"メッセージ受信 from {client_address}: {message[:100]}..."
+                    )
 
                     # JSONメッセージとして処理
                     try:
@@ -159,7 +165,7 @@ class CommunicationServer:
                         response = json.dumps(response_data).encode("utf-8")
 
                         # 長さプレフィックス付きで送信
-                        client_socket.sendall(len(response).to_bytes(4, 'big'))
+                        client_socket.sendall(len(response).to_bytes(4, "big"))
                         client_socket.sendall(response)
 
                     except json.JSONDecodeError as e:
@@ -184,7 +190,9 @@ class CommunicationServer:
             # クライアント接続をリストから削除
             with self._clients_lock:
                 self.clients.discard((client_socket, client_address))
-            logger.info(f"クライアント接続終了: {client_address} (残り: {len(self.clients)})")
+            logger.info(
+                f"クライアント接続終了: {client_address} (残り: {len(self.clients)})"
+            )
             client_socket.close()
 
     def _process_message(self, data: dict[str, Any]) -> None:
@@ -227,11 +235,11 @@ class CommunicationServer:
 
     def _recv_exact(self, sock: socket.socket, length: int) -> bytes:
         """指定したバイト数を確実に受信"""
-        data = b''
+        data = b""
         while len(data) < length:
             chunk = sock.recv(length - len(data))
             if not chunk:
-                return b''  # 接続が閉じられた
+                return b""  # 接続が閉じられた
             data += chunk
         return data
 
