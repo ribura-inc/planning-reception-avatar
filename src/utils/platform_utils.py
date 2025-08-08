@@ -48,12 +48,8 @@ class PlatformUtils:
 
         if current_platform == Platform.WINDOWS:
             return [
-                r"C:\Program Files\VTube Studio\VTube Studio.exe",
-                r"C:\Program Files (x86)\VTube Studio\VTube Studio.exe",
-                os.path.expandvars(r"%PROGRAMFILES%\VTube Studio\VTube Studio.exe"),
-                os.path.expandvars(
-                    r"%PROGRAMFILES(X86)%\VTube Studio\VTube Studio.exe"
-                ),
+                r"C:\Program Files (x86)\Steam\steamapps\common\VTube Studio\VTubeStudio.exe",
+                r"C:\Users\%USERNAME%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Steam\VTube Studio.url",
             ]
         elif current_platform == Platform.MACOS:
             return [
