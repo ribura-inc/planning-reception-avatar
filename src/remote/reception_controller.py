@@ -62,6 +62,11 @@ class ReceptionController:
 
             # セッション終了フラグを立てる
             self._session_ended = True
+            
+            # GUI状態を更新
+            if self.gui:
+                self.gui.update_status(ConnectionStatus.DISCONNECTING)
+                self.gui.add_log("Meetセッションを終了しています...")
         except Exception as e:
             logger.error(f"Chrome終了処理エラー: {e}")
 
@@ -163,6 +168,9 @@ class ReceptionController:
                     logger.info(
                         "Chromeが終了またはMeetから退出したため、セッションを終了します"
                     )
+                    if self.gui:
+                        self.gui.update_status(ConnectionStatus.DISCONNECTING)
+                        self.gui.add_log("Chromeが終了またはMeetから退出しました")
                     break
 
                 # 通信チェック

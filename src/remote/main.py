@@ -75,9 +75,22 @@ def main():
                 if controller.start_reception_session():
                     gui.update_status(ConnectionStatus.CONNECTED)
                     gui.add_log("セッションが開始されました")
+                    
+                    # バックグラウンドでセッション監視を開始
+                    import threading
+                    def monitor_session():
+                        nonlocal controller
+                        controller.wait_for_session_end()
+                        # セッション終了後の処理
+                        controller.cleanup()
+                        controller = None
+                    
+                    monitor_thread = threading.Thread(target=monitor_session, daemon=True)
+                    monitor_thread.start()
                 else:
                     gui.update_status(ConnectionStatus.ERROR)
                     gui.add_log("接続に失敗しました")
+                    controller = None
 
             except Exception as e:
                 gui.update_status(ConnectionStatus.ERROR)

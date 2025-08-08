@@ -90,7 +90,7 @@ class RemoteGUI:
             text="接続",
             icon=Icons.CONNECT_WITHOUT_CONTACT,
             on_click=self._on_connect,
-            disabled=False,
+            disabled=True,  # 初期状態では無効化（チェック完了後に有効化）
         )
 
         self.disconnect_button = ft.FilledButton(
@@ -499,6 +499,11 @@ class RemoteGUI:
 
         def check_thread():
             try:
+                # チェック開始時は接続ボタンを無効化
+                if self.page and self.connect_button:
+                    self.connect_button.disabled = True
+                    self.page.update()
+                
                 # VTube Studioの状態チェック
                 from src.utils.vtube_studio_utils import check_and_setup_vtube_studio
                 vtube_ok, vtube_message = check_and_setup_vtube_studio()
@@ -591,11 +596,19 @@ class RemoteGUI:
                 all_passed = all(self.check_states.values())
                 if all_passed:
                     self.add_log("✓ すべてのシステムチェックが完了しました")
+                    # すべてOKなら接続ボタンを有効化
+                    if self.page and self.connect_button:
+                        self.connect_button.disabled = False
+                        self.page.update()
                 else:
                     failed_items = [k for k, v in self.check_states.items() if not v]
                     self.add_log(
                         f"⚠ 一部のチェックが失敗しました: {', '.join(failed_items)}"
                     )
+                    # 失敗がある場合は接続ボタンを無効のまま
+                    if self.page and self.connect_button:
+                        self.connect_button.disabled = True
+                        self.page.update()
 
             except Exception as e:
                 self.add_log(f"バックグラウンドチェックエラー: {str(e)}")
