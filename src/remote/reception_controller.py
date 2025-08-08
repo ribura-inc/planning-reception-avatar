@@ -7,6 +7,7 @@ import logging
 import time
 
 from ..models.enums import ConnectionStatus, RemoteCommand
+from ..utils.slack import notify_error, notify_usage
 from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
 from .flet_gui import RemoteGUI
@@ -62,13 +63,14 @@ class ReceptionController:
 
             # セッション終了フラグを立てる
             self._session_ended = True
-            
+
             # GUI状態を更新
             if self.gui:
                 self.gui.update_status(ConnectionStatus.DISCONNECTING)
                 self.gui.add_log("Meetセッションを終了しています...")
         except Exception as e:
             logger.error(f"Chrome終了処理エラー: {e}")
+            notify_error(e, "Chrome終了処理", {"フロントPC": self.front_pc_ip})
 
     def start_reception_session(self) -> bool:
         """受付セッションを開始"""
@@ -135,10 +137,26 @@ class ReceptionController:
             logger.info("受付セッションの開始が完了しました")
             logger.info(f"Meet URL: {self.current_meet_url}")
 
+            # 使用実績通知
+            notify_usage(
+                "受付セッション開始完了",
+                {"フロントPC": self.front_ip, "Meet URL": self.current_meet_url},
+            )
+
             return True
 
         except Exception as e:
             logger.error(f"受付セッション開始エラー: {e}")
+            notify_error(
+                e,
+                "受付セッション開始",
+                {
+                    "フロントPC": self.front_pc_ip,
+                    "Meet URL": self.current_meet_url
+                    if self.current_meet_url
+                    else "未生成",
+                },
+            )
             self.cleanup()
             return False
 

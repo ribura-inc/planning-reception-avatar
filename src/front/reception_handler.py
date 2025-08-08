@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from ..models.enums import ConnectionStatus, MessageType, RemoteCommand
+from ..utils.slack import notify_error, notify_usage
 from .communication_server import CommunicationServer
 from .flet_gui import FrontGUI
 from .meet_participant import MeetParticipant
@@ -146,14 +147,19 @@ class ReceptionHandler:
                 self._update_gui(
                     ConnectionStatus.CONNECTED, "Meetへの参加が完了しました"
                 )
+                notify_usage("フロントPC Meet参加完了", {"Meet URL": meet_url})
                 # Chrome監視を開始
                 self._start_chrome_monitoring()
             else:
                 logger.error("Meetへの参加に失敗しました")
                 self._update_gui(ConnectionStatus.ERROR, "Meetへの参加に失敗しました")
+                notify_error(
+                    Exception("Meet参加失敗"), "Meet参加", {"Meet URL": meet_url}
+                )
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
+            notify_error(e, "Meet参加", {"Meet URL": meet_url})
 
     def _leave_meeting(self) -> None:
         """Meetから退出"""
@@ -168,6 +174,7 @@ class ReceptionHandler:
                 logger.info("参加中のMeetがありません")
         except Exception as e:
             logger.error(f"Meet退出エラー: {e}")
+            notify_error(e, "Meet退出", {})
 
     def _end_session(self) -> None:
         """セッション終了"""

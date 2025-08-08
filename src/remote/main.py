@@ -11,6 +11,7 @@ import sys
 from src.models.enums import ConnectionStatus
 from src.remote.flet_gui import RemoteGUI
 from src.remote.reception_controller import ReceptionController
+from src.utils.slack import notify_error, notify_usage
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ def main():
             logger.info("終了要求を受信しました")
         except Exception as e:
             logger.error(f"エラー: {e}")
+            notify_error(e, "リモートPC メイン処理", {"フロントPC": args.front_ip})
             sys.exit(1)
         finally:
             controller.cleanup()
@@ -75,17 +77,21 @@ def main():
                 if controller.start_reception_session():
                     gui.update_status(ConnectionStatus.CONNECTED)
                     gui.add_log("セッションが開始されました")
-                    
+                    notify_usage("リモートPCセッション開始", {"フロントPC": front_ip})
+
                     # バックグラウンドでセッション監視を開始
                     import threading
+
                     def monitor_session():
                         nonlocal controller
                         controller.wait_for_session_end()
                         # セッション終了後の処理
                         controller.cleanup()
                         controller = None
-                    
-                    monitor_thread = threading.Thread(target=monitor_session, daemon=True)
+
+                    monitor_thread = threading.Thread(
+                        target=monitor_session, daemon=True
+                    )
                     monitor_thread.start()
                 else:
                     gui.update_status(ConnectionStatus.ERROR)
@@ -95,6 +101,7 @@ def main():
             except Exception as e:
                 gui.update_status(ConnectionStatus.ERROR)
                 gui.add_log(f"エラー: {e}")
+                notify_error(e, "リモートPC GUI接続", {"フロントPC": front_ip})
 
         def disconnect_session():
             nonlocal controller

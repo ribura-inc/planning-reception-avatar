@@ -40,7 +40,6 @@ class RemoteGUI:
         self.log_container: ft.Container | None = None
         self.vtube_status_text: ft.Text | None = None
 
-
         # Chrome拡張機能個別ステータス
         self.auto_admit_status: ft.Text | None = None
         self.auto_admit_button: ft.OutlinedButton | None = None
@@ -144,8 +143,6 @@ class RemoteGUI:
             color=Colors.SECONDARY,
         )
 
-
-
         # Chrome拡張機能個別ステータス
         self.auto_admit_status = ft.Text(
             "チェック中...",
@@ -207,11 +204,7 @@ class RemoteGUI:
                                 self.vtube_status_text,
                             ]
                         ),
-                        ft.Row(
-                            [
-                                ft.Text("Chrome:", size=14)
-                            ]
-                        ),
+                        ft.Row([ft.Text("Chrome:", size=14)]),
                         # Chrome拡張機能の詳細ステータス（インデント表示）
                         ft.Container(
                             content=ft.Column(
@@ -362,7 +355,6 @@ class RemoteGUI:
     def update_status(self, status_enum: ConnectionStatus) -> None:
         """接続ステータスの更新"""
         try:
-
             self.state.status = status_enum
 
             if self.page and self.status_text:
@@ -394,7 +386,6 @@ class RemoteGUI:
                     self.vtube_status_text.color = (
                         Colors.GREEN if status == "起動中" else Colors.SECONDARY
                     )
-
 
             self.page.update()
 
@@ -503,9 +494,10 @@ class RemoteGUI:
                 if self.page and self.connect_button:
                     self.connect_button.disabled = True
                     self.page.update()
-                
+
                 # VTube Studioの状態チェック
                 from src.utils.vtube_studio_utils import check_and_setup_vtube_studio
+
                 vtube_ok, vtube_message = check_and_setup_vtube_studio()
                 if self.page and self.vtube_status_text:
                     self.vtube_status_text.value = "起動中" if vtube_ok else "起動前"
@@ -515,7 +507,7 @@ class RemoteGUI:
                     self.page.update()
                 if vtube_ok:
                     self.add_log(f"VTube Studio: {vtube_message}")
-                
+
                 self.add_log("システムチェックを開始しています...")
 
                 # PrecheckManagerのインスタンスを作成
