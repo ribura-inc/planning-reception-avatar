@@ -72,12 +72,19 @@ dev-dependencies = [
     "pre-commit>=3.5.0",
     "ipython>=8.17.0",
     "rich>=13.7.0",
+    "pyinstaller>=6.0.0",
 ]
 
 [tool.rye.scripts]
 # メインアプリケーション実行
 front = "python -m src.front.main"
 remote = "python -m src.remote.main"
+
+# ビルドスクリプト
+build = "python build.py"
+build-front = "python build.py --target front"
+build-remote = "python build.py --target remote"
+build-clean = "python build.py --clean"
 
 
 [tool.hatch.metadata]
