@@ -26,6 +26,15 @@ class SessionLocation(Enum):
     REMOTE = "remote"
 
 
+class MeetEndReason(Enum):
+    """Meet終了理由列挙"""
+
+    NORMAL_EXIT = "正常終了（UIの終了ボタン）"
+    CHROME_CLOSED = "Chrome強制終了"
+    REMOTE_COMMAND = "リモートからのコマンド"
+    DISCONNECT = "接続切断"
+
+
 def send_slack_notification(
     notification_type: NotificationType,
     title: str,
@@ -59,10 +68,10 @@ def send_slack_notification(
         # 実行場所に応じた絵文字とタイトル
         if location == SessionLocation.FRONT:
             location_emoji = "🏨"
-            location_title = "フロントPCセッション"
+            location_title = "フロントPC"
         elif location == SessionLocation.REMOTE:
             location_emoji = "🧑‍💻"
-            location_title = "リモートPCセッション"
+            location_title = "リモートPC"
         else:
             location_emoji = ""
             location_title = ""
@@ -156,6 +165,44 @@ def notify_usage(
         notification_type=NotificationType.INFO,
         title="受付システム利用",
         message=action,
+        details=details,
+        location=location,
+    )
+
+
+def notify_meet_end(
+    reason: MeetEndReason,
+    meet_url: str | None = None,
+    additional_info: dict[str, Any] | None = None,
+    location: SessionLocation | None = None,
+) -> None:
+    """
+    Meet終了通知を送信するヘルパー関数
+
+    Args:
+        reason: 終了理由
+        meet_url: 終了したMeet URL
+        additional_info: 追加情報
+        location: セッション実行場所（front/remote）
+    """
+    # 終了理由のメッセージを取得
+    reason_message = reason.value
+
+    # 詳細情報を構築
+    details = {
+        "終了理由": reason.value,
+    }
+
+    if meet_url:
+        details["Meet URL"] = meet_url
+
+    if additional_info:
+        details.update(additional_info)
+
+    send_slack_notification(
+        notification_type=NotificationType.INFO,
+        title="Meet終了",
+        message=f"Meetセッションが終了しました: {reason_message}",
         details=details,
         location=location,
     )

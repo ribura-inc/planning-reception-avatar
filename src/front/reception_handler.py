@@ -9,7 +9,13 @@ import time
 from typing import Any
 
 from ..models.enums import ConnectionStatus, MessageType, RemoteCommand
-from ..utils.slack import SessionLocation, notify_error, notify_usage
+from ..utils.slack import (
+    MeetEndReason,
+    SessionLocation,
+    notify_error,
+    notify_meet_end,
+    notify_usage,
+)
 from .communication_server import CommunicationServer
 from .flet_gui import FrontGUI
 from .meet_participant import MeetParticipant
@@ -170,7 +176,7 @@ class ReceptionHandler:
                 e, "Meet参加", {"Meet URL": meet_url}, location=SessionLocation.FRONT
             )
 
-    def _leave_meeting(self) -> None:
+    def _leave_meeting(self, reason: MeetEndReason = MeetEndReason.NORMAL_EXIT) -> None:
         """Meetから退出"""
         try:
             if self.meet_participant:
@@ -179,6 +185,12 @@ class ReceptionHandler:
                 self.meet_participant.cleanup()
                 self.meet_participant = None
                 logger.info("Meetから退出しました")
+                # Meet終了通知を送信
+                notify_meet_end(
+                    reason=reason,
+                    meet_url=self.current_meet_url,
+                    location=SessionLocation.FRONT,
+                )
             else:
                 logger.info("参加中のMeetがありません")
         except Exception as e:
@@ -191,7 +203,7 @@ class ReceptionHandler:
         try:
             # リモートPCからの終了コマンドによる処理
             logger.info("リモートPCからの終了要求を受信しました")
-            self._leave_meeting()
+            self._leave_meeting(reason=MeetEndReason.REMOTE_COMMAND)
 
             # 現在のMeet URLもクリア
             self.current_meet_url = None
@@ -266,6 +278,12 @@ class ReceptionHandler:
                 self.meet_participant.cleanup()
                 self.meet_participant = None
                 logger.info("Chromeが終了され、待機状態に戻りました")
+                # 切断による終了通知
+                notify_meet_end(
+                    reason=MeetEndReason.DISCONNECT,
+                    meet_url=self.current_meet_url,
+                    location=SessionLocation.FRONT,
+                )
 
             # 現在のMeet URLもクリア
             self.current_meet_url = None
@@ -294,7 +312,7 @@ class ReceptionHandler:
                     logger.info("Chromeが終了されました")
                     self._update_gui(ConnectionStatus.WAITING, "Chromeが終了されました")
                     # Meetから退出処理
-                    self._leave_meeting()
+                    self._leave_meeting(reason=MeetEndReason.CHROME_CLOSED)
                     # 現在のMeet URLもクリア
                     self.current_meet_url = None
                     break
@@ -357,7 +375,7 @@ class ReceptionHandler:
             self._stop_chrome_monitoring()
 
             # Meet退出
-            self._leave_meeting()
+            self._leave_meeting(reason=MeetEndReason.NORMAL_EXIT)
 
             # サーバー停止
             self.server.stop_server()

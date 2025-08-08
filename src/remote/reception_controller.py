@@ -7,7 +7,13 @@ import logging
 import time
 
 from ..models.enums import ConnectionStatus, RemoteCommand
-from ..utils.slack import SessionLocation, notify_error, notify_usage
+from ..utils.slack import (
+    MeetEndReason,
+    SessionLocation,
+    notify_error,
+    notify_meet_end,
+    notify_usage,
+)
 from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
 from .flet_gui import RemoteGUI
@@ -68,6 +74,13 @@ class ReceptionController:
             if self.gui:
                 self.gui.update_status(ConnectionStatus.DISCONNECTING)
                 self.gui.add_log("Meetセッションを終了しています...")
+
+            # Meet終了通知を送信
+            notify_meet_end(
+                reason=MeetEndReason.CHROME_CLOSED,
+                meet_url=self.current_meet_url,
+                location=SessionLocation.REMOTE,
+            )
         except Exception as e:
             logger.error(f"Chrome終了処理エラー: {e}")
             notify_error(
