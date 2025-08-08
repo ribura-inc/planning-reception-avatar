@@ -70,10 +70,8 @@ def send_slack_notification(
         # 通知タイプに応じた色とアイコン
         if notification_type == NotificationType.INFO:
             color = "#2196F3"  # 青色
-            fallback_prefix = "ℹ️"
         else:  # ERROR
             color = "danger"  # 赤色
-            fallback_prefix = "❌"
 
         # タイトルの構築（実行場所が指定されている場合は場所情報を先頭に追加）
         display_title = f"{location_emoji} {location_title}" if location else title
@@ -113,8 +111,8 @@ def send_slack_notification(
             "attachments": [
                 {
                     "color": color,
-                    "fallback": f"{fallback_prefix} {display_title}: {message}",
-                    "title": f"{icon} {display_title}",
+                    "fallback": f"{display_title}: {message}",
+                    "title": display_title,
                     "text": message,
                     "fields": fields,
                     "footer": "VTuber Reception System - Ribura Inc.",
