@@ -70,7 +70,12 @@ class ReceptionController:
                 self.gui.add_log("Meetセッションを終了しています...")
         except Exception as e:
             logger.error(f"Chrome終了処理エラー: {e}")
-            notify_error(e, "Chrome終了処理", {"フロントPC": self.front_pc_ip}, location=SessionLocation.REMOTE)
+            notify_error(
+                e,
+                "Chrome終了処理",
+                {"フロントPC": self.front_pc_ip},
+                location=SessionLocation.REMOTE,
+            )
 
     def start_reception_session(self) -> bool:
         """受付セッションを開始"""
@@ -139,8 +144,11 @@ class ReceptionController:
 
             # 使用実績通知
             notify_usage(
-                "受付セッション開始完了",
-                {"フロントPC": self.front_pc_ip, "Meet URL": self.current_meet_url},
+                "Meet開始完了",
+                {
+                    "接続先フロントPC": self.front_pc_ip,
+                    "Meet URL": self.current_meet_url,
+                },
                 location=SessionLocation.REMOTE,
             )
 

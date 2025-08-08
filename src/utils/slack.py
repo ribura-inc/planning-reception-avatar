@@ -70,11 +70,9 @@ def send_slack_notification(
         # 通知タイプに応じた色とアイコン
         if notification_type == NotificationType.INFO:
             color = "#2196F3"  # 青色
-            icon = "ℹ️"
             fallback_prefix = "ℹ️"
         else:  # ERROR
             color = "danger"  # 赤色
-            icon = "🚨"
             fallback_prefix = "❌"
 
         # タイトルの構築（実行場所が指定されている場合は場所情報を先頭に追加）

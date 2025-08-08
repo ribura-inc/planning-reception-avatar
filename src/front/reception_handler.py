@@ -147,19 +147,28 @@ class ReceptionHandler:
                 self._update_gui(
                     ConnectionStatus.CONNECTED, "Meetへの参加が完了しました"
                 )
-                notify_usage("フロントPC Meet参加完了", {"Meet URL": meet_url}, location=SessionLocation.FRONT)
+                notify_usage(
+                    "Meet参加完了",
+                    {"Meet URL": meet_url},
+                    location=SessionLocation.FRONT,
+                )
                 # Chrome監視を開始
                 self._start_chrome_monitoring()
             else:
                 logger.error("Meetへの参加に失敗しました")
                 self._update_gui(ConnectionStatus.ERROR, "Meetへの参加に失敗しました")
                 notify_error(
-                    Exception("Meet参加失敗"), "Meet参加", {"Meet URL": meet_url}, location=SessionLocation.FRONT
+                    Exception("Meet参加失敗"),
+                    "Meet参加",
+                    {"Meet URL": meet_url},
+                    location=SessionLocation.FRONT,
                 )
 
         except Exception as e:
             logger.error(f"Meet参加エラー: {e}")
-            notify_error(e, "Meet参加", {"Meet URL": meet_url}, location=SessionLocation.FRONT)
+            notify_error(
+                e, "Meet参加", {"Meet URL": meet_url}, location=SessionLocation.FRONT
+            )
 
     def _leave_meeting(self) -> None:
         """Meetから退出"""
