@@ -7,7 +7,7 @@ import logging
 import time
 
 from .platform_utils import PlatformUtils
-from .slack import notify_error
+from .slack import SessionLocation, notify_error
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def _launch_vtube_studio() -> bool:
 
     except Exception as e:
         logger.error(f"Failed to launch VTube Studio: {e}")
-        notify_error(e, "VTube Studio起動", {})
+        notify_error(e, "VTube Studio起動", {}, location=SessionLocation.REMOTE)
         return False
 
 

@@ -11,7 +11,7 @@ import threading
 
 from src.front.flet_gui import FrontGUI
 from src.front.reception_handler import ReceptionHandler
-from src.utils.slack import notify_error, notify_usage
+from src.utils.slack import SessionLocation, notify_error, notify_usage
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,15 @@ def main():
 
         try:
             notify_usage(
-                "フロントPC起動", {"ポート": args.port, "表示名": args.display_name}
+                "フロントPC起動", {"ポート": args.port, "表示名": args.display_name},
+                location=SessionLocation.FRONT,
             )
             handler.run()
         except KeyboardInterrupt:
             logger.info("終了要求を受信しました")
         except Exception as e:
             logger.error(f"エラー: {e}")
-            notify_error(e, "フロントPC メイン処理", {"ポート": args.port})
+            notify_error(e, "フロントPC メイン処理", {"ポート": args.port}, location=SessionLocation.FRONT)
             sys.exit(1)
         finally:
             handler.stop_reception()
@@ -78,7 +79,7 @@ def main():
             gui.run()
         except Exception as e:
             logger.error(f"GUIエラー: {e}")
-            notify_error(e, "フロントPC GUI", {"ポート": args.port})
+            notify_error(e, "フロントPC GUI", {"ポート": args.port}, location=SessionLocation.FRONT)
         finally:
             if handler:
                 handler.stop_reception()

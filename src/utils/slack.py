@@ -19,12 +19,20 @@ class NotificationType(Enum):
     ERROR = "error"  # エラーログ（赤色）
 
 
+class SessionLocation(Enum):
+    """セッション実行場所列挙"""
+
+    FRONT = "front"
+    REMOTE = "remote"
+
+
 def send_slack_notification(
     notification_type: NotificationType,
     title: str,
     message: str,
     details: dict[str, Any] | None = None,
     error_traceback: str | None = None,
+    location: SessionLocation | None = None,
 ) -> None:
     """
     Slack通知を送信
@@ -35,6 +43,7 @@ def send_slack_notification(
         message: メインメッセージ
         details: 追加詳細情報（辞書形式）
         error_traceback: エラーのトレースバック情報
+        location: セッション実行場所（front/remote）
     """
     # Webhook URLを環境変数から取得（デフォルト値あり）
     webhook_url = os.getenv("SLACK_WEBHOOK_URL")
@@ -47,10 +56,16 @@ def send_slack_notification(
         # 現在時刻
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # ホスト名を取得
-        import socket
-
-        hostname = socket.gethostname()
+        # 実行場所に応じた絵文字とタイトル
+        if location == SessionLocation.FRONT:
+            location_emoji = "🏨"
+            location_title = "フロントPCセッション"
+        elif location == SessionLocation.REMOTE:
+            location_emoji = "🧑‍💻"
+            location_title = "リモートPCセッション"
+        else:
+            location_emoji = ""
+            location_title = ""
 
         # 通知タイプに応じた色とアイコン
         if notification_type == NotificationType.INFO:
@@ -62,19 +77,21 @@ def send_slack_notification(
             icon = "🚨"
             fallback_prefix = "❌"
 
+        # タイトルの構築（実行場所が指定されている場合は場所情報を先頭に追加）
+        display_title = f"{location_emoji} {location_title}" if location else title
+
         # フィールドを構築
         fields = []
 
         # 詳細情報があれば追加
         if details:
             for key, value in details.items():
-                fields.append({"title": key, "value": str(value), "short": True})
+                fields.append({"title": key, "value": str(value), "short": False})
 
         # 基本フィールドを追加
         fields.extend(
             [
-                {"title": "ホスト", "value": hostname, "short": True},
-                {"title": "実行時刻", "value": now, "short": True},
+                {"title": "実行時刻", "value": now, "short": False},
             ]
         )
 
@@ -98,8 +115,8 @@ def send_slack_notification(
             "attachments": [
                 {
                     "color": color,
-                    "fallback": f"{fallback_prefix} {title}: {message}",
-                    "title": f"{icon} {title}",
+                    "fallback": f"{fallback_prefix} {display_title}: {message}",
+                    "title": f"{icon} {display_title}",
                     "text": message,
                     "fields": fields,
                     "footer": "VTuber Reception System - Ribura Inc.",
@@ -129,6 +146,7 @@ def send_slack_notification(
 def notify_usage(
     action: str,
     details: dict[str, Any] | None = None,
+    location: SessionLocation | None = None,
 ) -> None:
     """
     使用実績通知を送信するヘルパー関数
@@ -136,12 +154,14 @@ def notify_usage(
     Args:
         action: 実行されたアクション
         details: 追加詳細情報
+        location: セッション実行場所（front/remote）
     """
     send_slack_notification(
         notification_type=NotificationType.INFO,
         title="受付システム利用",
         message=action,
         details=details,
+        location=location,
     )
 
 
@@ -149,6 +169,7 @@ def notify_error(
     error: Exception,
     context: str,
     additional_info: dict[str, Any] | None = None,
+    location: SessionLocation | None = None,
 ) -> None:
     """
     エラー通知を送信するヘルパー関数
@@ -157,6 +178,7 @@ def notify_error(
         error: 発生したエラー
         context: エラーが発生したコンテキスト
         additional_info: 追加情報
+        location: セッション実行場所（front/remote）
     """
     # エラートレースバックを取得
     error_traceback = traceback.format_exc()
@@ -176,4 +198,5 @@ def notify_error(
         message=str(error),
         details=details,
         error_traceback=error_traceback,
+        location=location,
     )
