@@ -69,7 +69,7 @@ class HeartbeatMessage(CommunicationMessage):
 class GUIState(BaseModel):
     """GUI状態管理"""
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=False)
 
     status: ConnectionStatus
     connected_device: str | None = None
