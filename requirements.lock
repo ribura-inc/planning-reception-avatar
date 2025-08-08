@@ -198,7 +198,7 @@ pysocks==1.7.1
 python-dateutil==2.9.0.post0
     # via arrow
     # via celery
-python-dotenv==1.1.0
+python-dotenv==1.1.1
     # via pydantic-settings
     # via uvicorn
     # via vtuber-reception-system

@@ -255,7 +255,7 @@ python-dateutil==2.9.0.post0
     # via arrow
     # via celery
     # via freezegun
-python-dotenv==1.1.0
+python-dotenv==1.1.1
     # via pydantic-settings
     # via uvicorn
     # via vtuber-reception-system
