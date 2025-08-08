@@ -100,6 +100,14 @@ class SharedWebDriverManager:
         chrome_options.add_argument(f"--user-data-dir={self.profile_dir}")
         chrome_options.add_argument("--profile-directory=Default")
 
+        # GLES3/GLES2エラーを解決するためのグラフィックス関連オプション
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-software-rasterizer")
+        chrome_options.add_argument("--disable-gpu-sandbox")
+        chrome_options.add_argument("--use-gl=swiftshader")
+        chrome_options.add_argument("--ignore-gpu-blocklist")
+        chrome_options.add_argument("--disable-gpu-watchdog")
+
         # ヘッドレスモード設定
         if headless:
             chrome_options.add_argument("--headless=new")

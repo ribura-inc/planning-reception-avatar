@@ -22,26 +22,6 @@ class PlatformUtils:
         return Platform.from_system(system)
 
     @staticmethod
-    def get_chrome_paths() -> list[str]:
-        """プラットフォーム別のChrome実行ファイルパスを取得"""
-        current_platform = PlatformUtils.get_platform()
-
-        if current_platform == Platform.WINDOWS:
-            return [
-                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                os.path.expandvars(
-                    r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-                ),
-            ]
-        elif current_platform == Platform.MACOS:
-            return [
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            ]
-        else:
-            return []
-
-    @staticmethod
     def get_vtube_studio_paths() -> list[str]:
         """プラットフォーム別のVTube Studio実行ファイルパスを取得"""
         current_platform = PlatformUtils.get_platform()
