@@ -7,6 +7,9 @@ from enum import Enum
 from typing import Any
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class NotificationType(Enum):
@@ -34,10 +37,7 @@ def send_slack_notification(
         error_traceback: エラーのトレースバック情報
     """
     # Webhook URLを環境変数から取得（デフォルト値あり）
-    webhook_url = os.getenv(
-        "SLACK_WEBHOOK_URL",
-        "https://hooks.slack.com/services/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",
-    )
+    webhook_url = os.getenv("SLACK_WEBHOOK_URL")
 
     if not webhook_url:
         print(f"Slack Webhook URLが設定されていません: {title} - {message}")

@@ -140,7 +140,7 @@ class ReceptionController:
             # 使用実績通知
             notify_usage(
                 "受付セッション開始完了",
-                {"フロントPC": self.front_ip, "Meet URL": self.current_meet_url},
+                {"フロントPC": self.front_pc_ip, "Meet URL": self.current_meet_url},
             )
 
             return True
