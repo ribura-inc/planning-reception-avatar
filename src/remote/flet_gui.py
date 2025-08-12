@@ -478,6 +478,12 @@ class RemoteGUI:
         """Tailscaleデバイスの取得"""
 
         try:
+            # まずTailscaleの状態を確認
+            if not TailscaleUtils.check_tailscale_status():
+                self.add_log("⚠ Tailscaleが正常に動作していません")
+                self.add_log("  → Tailscaleアプリを起動してログインしてください")
+                return
+
             devices = TailscaleUtils.get_tailscale_devices()
             my_ip = TailscaleUtils.get_my_tailscale_ip()
             if devices and self.page and self.device_dropdown:
