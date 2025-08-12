@@ -35,3 +35,5 @@ class Config:
         # XPath定数
         REMOVE_BUTTON_XPATH: str = "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/.."
         ADD_BUTTON_XPATH: str = "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/.."
+
+    CONFIG_DIR_PATH: str = ".planning-reception-avatar"

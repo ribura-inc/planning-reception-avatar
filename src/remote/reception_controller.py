@@ -253,9 +253,9 @@ class ReceptionController:
             self.communication_client.disconnect()
 
             # 共有Webドライバーのクリーンアップ
-            from .webdriver_manager import cleanup_shared_webdriver
+            from .webdriver_manager import cleanup_webdriver
 
-            cleanup_shared_webdriver()
+            cleanup_webdriver()
 
             # GUI状態を更新
             if self.gui:

@@ -34,11 +34,11 @@ class PrecheckManager:
 
     def _setup_browser(self, headless: bool = True) -> None:
         """共有WebDriverインスタンスを取得してセットアップ"""
-        from .webdriver_manager import get_shared_webdriver
+        from .webdriver_manager import get_webdriver
 
         try:
             # 共有WebDriverインスタンスを取得
-            self.driver = get_shared_webdriver(headless=headless)
+            self.driver = get_webdriver(headless=headless)
             logger.info("共有WebDriverインスタンスを取得しました")
         except Exception as e:
             logger.error(f"共有WebDriverの取得に失敗: {e}")
@@ -133,12 +133,12 @@ class PrecheckManager:
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        from .webdriver_manager import release_shared_webdriver
+        from .webdriver_manager import release_webdriver
 
         if self.driver:
             try:
                 # 共有WebDriverの参照を解放
-                release_shared_webdriver()
+                release_webdriver()
                 self.driver = None
                 logger.info("PrecheckManagerのクリーンアップが完了しました")
             except Exception as e:

@@ -87,11 +87,11 @@ class MeetManager:
 
     def setup_browser(self) -> None:
         """共有WebDriverインスタンスを取得してセットアップ"""
-        from .webdriver_manager import get_shared_webdriver
+        from .webdriver_manager import get_webdriver
 
         try:
             # 共有WebDriverインスタンスを取得
-            self.driver = get_shared_webdriver(headless=False)
+            self.driver = get_webdriver(headless=False)
             logger.info("共有WebDriverインスタンスを取得しました")
         except Exception as e:
             logger.error(f"共有WebDriverの取得に失敗: {e}")
@@ -195,21 +195,21 @@ class MeetManager:
     def _monitor_chrome_process(self) -> None:
         """Chromeプロセスを監視"""
         from .webdriver_manager import (
-            get_shared_webdriver_chrome_pid,
-            is_shared_webdriver_active,
+            get_webdriver_chrome_pid,
+            is_webdriver_active,
         )
 
         while self._monitoring:
             try:
                 # 共有WebDriverの状態チェック
-                if not is_shared_webdriver_active():
+                if not is_webdriver_active():
                     logger.info("共有WebDriverが終了しました")
                     if self._on_chrome_exit_callback:
                         self._on_chrome_exit_callback()
                     break
 
                 # PIDによるプロセス監視
-                chrome_pid = get_shared_webdriver_chrome_pid()
+                chrome_pid = get_webdriver_chrome_pid()
                 if chrome_pid:
                     try:
                         chrome_process = psutil.Process(chrome_pid)
@@ -243,13 +243,13 @@ class MeetManager:
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        from .webdriver_manager import release_shared_webdriver
+        from .webdriver_manager import release_webdriver
 
         self.stop_process_monitoring()
         if self.driver:
             try:
                 # 共有WebDriverの参照を解放
-                release_shared_webdriver()
+                release_webdriver()
                 self.driver = None
                 logger.info("MeetManagerのクリーンアップが完了しました")
             except Exception as e:
@@ -258,6 +258,6 @@ class MeetManager:
     @classmethod
     def cleanup_shared_driver(cls) -> None:
         """共有ドライバーのクリーンアップ（互換性のため残す）"""
-        from .webdriver_manager import cleanup_shared_webdriver
+        from .webdriver_manager import cleanup_webdriver
 
-        cleanup_shared_webdriver()
+        cleanup_webdriver()

@@ -73,4 +73,3 @@ class GUIState(BaseModel):
 
     status: ConnectionStatus
     connected_device: str | None = None
-    error_message: str | None = None

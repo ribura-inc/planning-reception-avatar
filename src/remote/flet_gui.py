@@ -250,16 +250,6 @@ class RemoteGUI:
                             ),
                             margin=ft.margin.only(left=20),
                         ),
-                        ft.Row(
-                            [
-                                ft.Text("プラットフォーム:", size=14),
-                                ft.Text(
-                                    PlatformUtils.get_platform().value.capitalize(),
-                                    size=14,
-                                    color=Colors.SECONDARY,
-                                ),
-                            ]
-                        ),
                     ]
                 ),
                 padding=20,
