@@ -14,6 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 from src.config import Config
+from src.models.enums import Platform
 from src.utils.platform_utils import PlatformUtils
 
 logger = getLogger(__name__)
@@ -134,8 +135,12 @@ class WebDriverManager:
             chrome_options.add_experimental_option("useAutomationExtension", False)
             chrome_options.add_argument("--disable-gpu")
 
-            # 全画面モードで起動
-            chrome_options.add_argument("--start-fullscreen")
+            if PlatformUtils.get_platform() == Platform.MACOS:
+                # ウィンドウサイズを指定
+                chrome_options.add_argument("--window-size=1920,1080")
+            elif PlatformUtils.get_platform() == Platform.WINDOWS:
+                # 全画面モードで起動
+                chrome_options.add_argument("--start-fullscreen")
 
         try:
             service = Service()
