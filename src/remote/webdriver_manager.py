@@ -187,30 +187,31 @@ class WebDriverManager:
         return self._chrome_pid
 
 
-# モジュールレベルでインスタンスを作成（シングルトン）
-_webdriver_manager = WebDriverManager()
+# シングルトンインスタンス
+webdriver_manager = WebDriverManager()
 
 
+# 後方互換性のためのエイリアス関数
 def get_webdriver(headless: bool = False) -> webdriver.Chrome:
     """共有WebDriverインスタンスを取得"""
-    return _webdriver_manager.get_driver(headless=headless)
+    return webdriver_manager.get_driver(headless=headless)
 
 
 def release_webdriver() -> None:
     """共有WebDriverインスタンスの参照を解放"""
-    _webdriver_manager.release_driver()
+    webdriver_manager.release_driver()
 
 
 def cleanup_webdriver() -> None:
     """共有WebDriverを強制クリーンアップ"""
-    _webdriver_manager.force_cleanup()
+    webdriver_manager.force_cleanup()
 
 
 def is_webdriver_active() -> bool:
     """共有WebDriverが有効かどうかを確認"""
-    return _webdriver_manager.is_driver_active()
+    return webdriver_manager.is_driver_active()
 
 
 def get_webdriver_chrome_pid() -> int | None:
     """共有WebDriverのChrome PIDを取得"""
-    return _webdriver_manager.get_chrome_pid()
+    return webdriver_manager.get_chrome_pid()

@@ -18,6 +18,7 @@ from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
 from .communication_client import CommunicationClient
 from .flet_gui import RemoteGUI
 from .meet_manager import MeetManager
+from .webdriver_manager import cleanup_webdriver
 
 logger = logging.getLogger(__name__)
 
@@ -253,8 +254,6 @@ class ReceptionController:
             self.communication_client.disconnect()
 
             # 共有Webドライバーのクリーンアップ
-            from .webdriver_manager import cleanup_webdriver
-
             cleanup_webdriver()
 
             # GUI状態を更新

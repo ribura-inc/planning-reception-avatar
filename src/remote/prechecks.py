@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import Config
+from .webdriver_manager import get_webdriver, release_webdriver
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ class PrecheckManager:
 
     def _setup_browser(self, headless: bool = True) -> None:
         """共有WebDriverインスタンスを取得してセットアップ"""
-        from .webdriver_manager import get_webdriver
 
         try:
             # 共有WebDriverインスタンスを取得
@@ -133,7 +133,6 @@ class PrecheckManager:
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        from .webdriver_manager import release_webdriver
 
         if self.driver:
             try:

@@ -7,72 +7,12 @@ import json
 import logging
 import os
 import subprocess
-import time
-from threading import Lock
 
 logger = logging.getLogger(__name__)
-
-# キャッシュ設定
-_cache_lock = Lock()
-_status_cache: dict | None = None
-_cache_timestamp = 0
-CACHE_DURATION = 30  # 30秒キャッシュ
 
 
 class TailscaleUtils:
     """Tailscale関連の操作を管理するユーティリティクラス"""
-
-    @staticmethod
-    def _get_cached_status() -> dict | None:
-        """キャッシュされたステータスを取得"""
-        global _status_cache, _cache_timestamp
-
-        with _cache_lock:
-            current_time = time.time()
-            if (
-                _status_cache is not None
-                and current_time - _cache_timestamp < CACHE_DURATION
-            ):
-                return _status_cache
-            return None
-
-    @staticmethod
-    def _set_cache(status: dict) -> None:
-        """ステータスをキャッシュに保存"""
-        global _status_cache, _cache_timestamp
-
-        with _cache_lock:
-            _status_cache = status
-            _cache_timestamp = time.time()
-
-    @staticmethod
-    def _get_status_data() -> dict | None:
-        """Tailscaleステータスを取得（キャッシュ利用）"""
-        # キャッシュ確認
-        cached = TailscaleUtils._get_cached_status()
-        if cached is not None:
-            return cached
-
-        try:
-            tailscale_cmd = TailscaleUtils._get_tailscale_command()
-            result = subprocess.run(
-                [tailscale_cmd, "status", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=5,  # タイムアウト短縮
-            )
-
-            if result.returncode != 0:
-                logger.error(f"Tailscale status failed: {result.stderr}")
-                return None
-
-            status = json.loads(result.stdout)
-            TailscaleUtils._set_cache(status)
-            return status
-
-        except Exception as e:
-            logger.error(f"Error getting Tailscale status: {e}")
-            return None
 
     @staticmethod
     def _get_tailscale_command() -> str:
@@ -83,6 +23,29 @@ class TailscaleUtils:
         else:
             # 他の環境では通常のコマンドを使用
             return "tailscale"
+
+    @staticmethod
+    def _get_status_data() -> dict | None:
+        """Tailscaleステータスを取得"""
+        try:
+            tailscale_cmd = TailscaleUtils._get_tailscale_command()
+            result = subprocess.run(
+                [tailscale_cmd, "status", "--json"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode != 0:
+                logger.error(f"Tailscale status failed: {result.stderr}")
+                return None
+
+            status = json.loads(result.stdout)
+            return status
+
+        except Exception as e:
+            logger.error(f"Error getting Tailscale status: {e}")
+            return None
 
     @staticmethod
     def check_tailscale_status() -> bool:
@@ -185,8 +148,18 @@ class TailscaleUtils:
         return None
 
     @staticmethod
-    def validate_tailscale_setup() -> tuple[bool, str]:
-        """Tailscaleのセットアップが正しく完了しているかを検証"""
+    def check_and_setup_tailscale(
+        required_device: str | None = None,
+    ) -> tuple[bool, str]:
+        """
+        Tailscaleの設定を確認し、必要に応じてエラーメッセージを返す
+
+        Args:
+            required_device: 必要なデバイス名（省略可能）
+
+        Returns:
+            (success, message): 成功フラグとメッセージ
+        """
         try:
             # 1. Tailscaleコマンドの存在確認
             tailscale_cmd = TailscaleUtils._get_tailscale_command()
@@ -215,6 +188,18 @@ class TailscaleUtils:
             if not devices:
                 return False, "Tailscaleネットワーク内のデバイスが見つかりません"
 
+            # 5. 特定のデバイスが必要な場合
+            if required_device:
+                ip = TailscaleUtils.resolve_device_name(required_device)
+                if not ip:
+                    device_list = ", ".join(devices.keys()) if devices else "なし"
+                    return (
+                        False,
+                        f"デバイス '{required_device}' が見つかりません。利用可能なデバイス: {device_list}",
+                    )
+
+                return True, f"デバイス '{required_device}' を発見しました (IP: {ip})"
+
             return (
                 True,
                 f"Tailscaleセットアップ完了 (IP: {my_ip}, デバイス数: {len(devices)})",
@@ -224,32 +209,5 @@ class TailscaleUtils:
             return False, f"Tailscale検証中にエラーが発生しました: {e}"
 
 
-def check_and_setup_tailscale(required_device: str | None = None) -> tuple[bool, str]:
-    """
-    Tailscaleの設定を確認し、必要に応じてエラーメッセージを返す
-
-    Args:
-        required_device: 必要なデバイス名（省略可能）
-
-    Returns:
-        (success, message): 成功フラグとメッセージ
-    """
-    # 基本的な設定確認
-    is_valid, message = TailscaleUtils.validate_tailscale_setup()
-    if not is_valid:
-        return False, message
-
-    # 特定のデバイスが必要な場合
-    if required_device:
-        ip = TailscaleUtils.resolve_device_name(required_device)
-        if not ip:
-            devices = TailscaleUtils.get_tailscale_devices()
-            device_list = ", ".join(devices.keys()) if devices else "なし"
-            return (
-                False,
-                f"デバイス '{required_device}' が見つかりません。利用可能なデバイス: {device_list}",
-            )
-
-        return True, f"デバイス '{required_device}' を発見しました (IP: {ip})"
-
-    return True, message
+# 後方互換性のためのエイリアス
+check_and_setup_tailscale = TailscaleUtils.check_and_setup_tailscale

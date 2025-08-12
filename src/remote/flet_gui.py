@@ -16,6 +16,8 @@ from flet.core.icons import Icons
 from ..models.enums import ConnectionStatus
 from ..models.schemas import GUIState
 from ..utils.platform_utils import PlatformUtils
+from ..utils.vtube_studio_utils import check_and_setup_vtube_studio
+from .prechecks import PrecheckManager
 
 logger = logging.getLogger(__name__)
 
@@ -436,8 +438,6 @@ class RemoteGUI:
 
     def _open_extension_page(self, extension_type: str) -> None:
         """拡張機能のインストールページを開く"""
-        from src.remote.prechecks import PrecheckManager
-
         urls = {
             "auto_admit": "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb",
             "screen_capture": "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc",
@@ -458,7 +458,6 @@ class RemoteGUI:
 
     def _open_google_login(self) -> None:
         """Googleログインページを開く"""
-        from src.remote.prechecks import PrecheckManager
 
         try:
             # PrecheckManagerを使って既存のプロファイルでChromeを開く
@@ -476,8 +475,6 @@ class RemoteGUI:
         """バックグラウンドで事前チェックを実行"""
         import threading
 
-        from src.remote.prechecks import PrecheckManager
-
         def check_thread():
             try:
                 # チェック開始時は接続ボタンを無効化
@@ -486,8 +483,6 @@ class RemoteGUI:
                     self.page.update()
 
                 # VTube Studioの状態チェック
-                from src.utils.vtube_studio_utils import check_and_setup_vtube_studio
-
                 vtube_ok, vtube_message = check_and_setup_vtube_studio()
                 if self.page and self.vtube_status_text:
                     self.vtube_status_text.value = "起動中" if vtube_ok else "起動前"

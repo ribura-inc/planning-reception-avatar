@@ -22,6 +22,13 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
 from ..config import Config
+from .webdriver_manager import (
+    cleanup_webdriver,
+    get_webdriver,
+    get_webdriver_chrome_pid,
+    is_webdriver_active,
+    release_webdriver,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +94,6 @@ class MeetManager:
 
     def setup_browser(self) -> None:
         """共有WebDriverインスタンスを取得してセットアップ"""
-        from .webdriver_manager import get_webdriver
 
         try:
             # 共有WebDriverインスタンスを取得
@@ -194,10 +200,6 @@ class MeetManager:
 
     def _monitor_chrome_process(self) -> None:
         """Chromeプロセスを監視"""
-        from .webdriver_manager import (
-            get_webdriver_chrome_pid,
-            is_webdriver_active,
-        )
 
         while self._monitoring:
             try:
@@ -243,7 +245,6 @@ class MeetManager:
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-        from .webdriver_manager import release_webdriver
 
         self.stop_process_monitoring()
         if self.driver:
@@ -258,6 +259,4 @@ class MeetManager:
     @classmethod
     def cleanup_shared_driver(cls) -> None:
         """共有ドライバーのクリーンアップ（互換性のため残す）"""
-        from .webdriver_manager import cleanup_webdriver
-
         cleanup_webdriver()

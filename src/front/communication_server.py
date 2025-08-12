@@ -12,7 +12,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from ..utils.tailscale_utils import TailscaleUtils, check_and_setup_tailscale
+from ..utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class CommunicationServer:
         """サーバーを開始"""
         try:
             # Tailscaleセットアップの確認
-            is_valid, message = check_and_setup_tailscale()
+            is_valid, message = TailscaleUtils.check_and_setup_tailscale()
             if not is_valid:
                 logger.error(f"Tailscale設定エラー: {message}")
                 logger.error("TAILSCALE_SETUP.mdを参照してTailscaleを設定してください")

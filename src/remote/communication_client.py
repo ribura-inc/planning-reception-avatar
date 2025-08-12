@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any
 
 from ..models.enums import MessageType
-from ..utils.tailscale_utils import TailscaleUtils, check_and_setup_tailscale
+from ..utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class CommunicationClient:
             return True
 
         logger.info("Tailscale設定を確認中...")
-        is_valid, message = check_and_setup_tailscale()
+        is_valid, message = TailscaleUtils.check_and_setup_tailscale()
         if is_valid:
             CommunicationClient._tailscale_verified = True
             CommunicationClient._tailscale_check_time = current_time

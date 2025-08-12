@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 VTuber受付システム ビルドスクリプト
 Windows/Mac両対応の実行ファイル生成
@@ -42,6 +41,7 @@ def check_pyinstaller():
     """PyInstallerがインストールされているか確認"""
     try:
         import PyInstaller
+
         print_info(f"PyInstaller {PyInstaller.__version__} が見つかりました")
         return True
     except ImportError:
@@ -49,9 +49,7 @@ def check_pyinstaller():
         print_info("インストール中...")
         try:
             subprocess.run(
-                ["rye", "add", "--dev", "pyinstaller"],
-                check=True,
-                capture_output=True
+                ["rye", "add", "--dev", "pyinstaller"], check=True, capture_output=True
             )
             subprocess.run(["rye", "sync"], check=True, capture_output=True)
             print_success("PyInstallerをインストールしました")
@@ -103,12 +101,7 @@ def build_app(spec_file: str, app_name: str):
     try:
         # PyInstallerを実行
         cmd = ["rye", "run", "pyinstaller", str(spec_path), "--clean", "--noconfirm"]
-        result = subprocess.run(
-            cmd,
-            cwd=ROOT_DIR,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(cmd, cwd=ROOT_DIR, capture_output=True, text=True)
 
         if result.returncode != 0:
             print_error(f"ビルドに失敗しました:\n{result.stderr}")
@@ -151,7 +144,9 @@ def list_build_results():
                 print(f"    場所: {exe}")
 
     else:  # Linux等
-        executables = [f for f in BUILD_DIR.iterdir() if f.is_file() and f.stat().st_mode & 0o111]
+        executables = [
+            f for f in BUILD_DIR.iterdir() if f.is_file() and f.stat().st_mode & 0o111
+        ]
         if executables:
             print_info("生成された実行ファイル:")
             for exe in executables:
@@ -162,24 +157,18 @@ def list_build_results():
 
 def main():
     """メイン処理"""
-    parser = argparse.ArgumentParser(
-        description="VTuber受付システムのビルドスクリプト"
-    )
+    parser = argparse.ArgumentParser(description="VTuber受付システムのビルドスクリプト")
     parser.add_argument(
         "--target",
         choices=["front", "remote", "both"],
         default="both",
-        help="ビルドするターゲット (default: both)"
+        help="ビルドするターゲット (default: both)",
     )
     parser.add_argument(
-        "--clean",
-        action="store_true",
-        help="ビルド前にクリーンアップを実行"
+        "--clean", action="store_true", help="ビルド前にクリーンアップを実行"
     )
     parser.add_argument(
-        "--no-check",
-        action="store_true",
-        help="事前チェックをスキップ"
+        "--no-check", action="store_true", help="事前チェックをスキップ"
     )
 
     args = parser.parse_args()
