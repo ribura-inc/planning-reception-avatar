@@ -6,7 +6,6 @@ remoteディレクトリ全体で共有するWebDriverマネージャー
 
 import threading
 from logging import getLogger
-from pathlib import Path
 
 import psutil
 from selenium import webdriver
@@ -44,9 +43,7 @@ class WebDriverManager:
             return
         self._initialized = True
 
-        self.profile_dir = (
-            Path.home() / Config.CONFIG_DIR_PATH / "chrome-profile-remote"
-        )
+        self.profile_dir = Config.CONFIG_DIR / "chrome-profile-remote"
 
     def get_driver(self, headless: bool = False) -> webdriver.Chrome:
         """共有WebDriverインスタンスを取得"""
@@ -57,9 +54,12 @@ class WebDriverManager:
                 try:
                     # 既存のドライバーが有効かチェック
                     _ = self._driver.current_url
-                    
+
                     # headless設定が変更されている場合は再作成
-                    if self._current_headless is not None and self._current_headless != headless:
+                    if (
+                        self._current_headless is not None
+                        and self._current_headless != headless
+                    ):
                         logger.info(
                             f"headless設定が変更されたため、ドライバーを再作成します "
                             f"(現在: {self._current_headless} -> 要求: {headless})"

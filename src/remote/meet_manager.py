@@ -66,7 +66,7 @@ class MeetManager:
 
     def _authenticate(self) -> None:
         """Google APIの認証処理"""
-        token_path = Path(__file__).parent.parent.parent / "token.json"
+        token_path = Config.CONFIG_DIR / "token.json"
         credentials_path = Path(__file__).parent.parent.parent / "credentials.json"
 
         creds = None

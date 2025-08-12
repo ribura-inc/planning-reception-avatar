@@ -3,6 +3,9 @@ UI設定定数定義
 日本語版Chrome前提で作成されたXPath・テキストを一元管理
 """
 
+import os
+from pathlib import Path
+
 
 class Config:
     """UI要素設定の統一アクセスポイント"""
@@ -36,4 +39,6 @@ class Config:
         REMOVE_BUTTON_XPATH: str = "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/.."
         ADD_BUTTON_XPATH: str = "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/.."
 
-    CONFIG_DIR_PATH: str = ".planning-reception-avatar"
+    CONFIG_DIR: Path = Path.home() /  ".planning-reception-avatar"
+
+os.makedirs(Config.CONFIG_DIR, exist_ok=True)
