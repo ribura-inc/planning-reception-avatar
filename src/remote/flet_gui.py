@@ -13,6 +13,8 @@ import flet as ft
 from flet.core.colors import Colors
 from flet.core.icons import Icons
 
+from src.utils.tailscale_utils import TailscaleUtils
+
 from ..models.enums import ConnectionStatus
 from ..models.schemas import GUIState
 from ..utils.platform_utils import PlatformUtils
@@ -35,7 +37,7 @@ class RemoteGUI:
         # Fletコンポーネント
         self.page: ft.Page | None = None
         self.status_text: ft.Text | None = None
-        self.target_input: ft.TextField | None = None
+        self.device_dropdown: ft.Dropdown | None = None
         self.connect_button: ft.FilledButton | None = None
         self.disconnect_button: ft.FilledButton | None = None
         self.log_column: ft.Column | None = None
@@ -78,13 +80,14 @@ class RemoteGUI:
         )
 
         # 接続設定カード
-        self.target_input = ft.TextField(
-            label="接続先（IPアドレスまたはデバイス名）",
-            value="",
-            hint_text="例: 192.168.1.100 または front-pc",
+        # Tailscaleデバイスのドロップダウン
+        self.device_dropdown = ft.Dropdown(
+            label="接続先デバイス",
+            hint_text="デバイスを選択してください",
             border_radius=8,
             filled=True,
             expand=True,
+            options=[],  # 初期状態では空、後で動的に更新
         )
 
         self.connect_button = ft.FilledButton(
@@ -112,7 +115,7 @@ class RemoteGUI:
                         ft.Divider(height=1),
                         ft.Row(
                             [
-                                self.target_input,
+                                self.device_dropdown,
                             ],
                             spacing=10,
                         ),
@@ -423,13 +426,13 @@ class RemoteGUI:
 
     def _on_connect(self, _e) -> None:
         """接続ボタンのハンドラ（最小限の動作）"""
-        if self.target_input and self._connect_callback:
-            target = self.target_input.value.strip()
+        if self.device_dropdown and self._connect_callback:
+            target = self.device_dropdown.value
             if target:
                 self.add_log(f"接続先: {target}")
                 self._connect_callback(target)
             else:
-                self.add_log("エラー: 接続先を入力してください")
+                self.add_log("エラー: 接続先デバイスを選択してください")
 
     def _on_disconnect(self, _e) -> None:
         """切断ボタンのハンドラ"""
@@ -471,111 +474,164 @@ class RemoteGUI:
         except Exception as e:
             self.add_log(f"エラー: {str(e)}")
 
+    def _check_tailscale_devices(self) -> None:
+        """Tailscaleデバイスの取得"""
+
+        try:
+            devices = TailscaleUtils.get_tailscale_devices()
+            my_ip = TailscaleUtils.get_my_tailscale_ip()
+            if devices and self.page and self.device_dropdown:
+                # 自端末を除外してドロップダウンオプションを作成
+                options = []
+                for device_name, device_ip in devices.items():
+                    if device_ip == my_ip:  # 自端末は除外
+                        continue
+                    options.append(
+                        ft.dropdown.Option(
+                            key=device_ip,
+                            text=f"{device_name} ({device_ip})",
+                        )
+                    )
+
+                if options:
+                    self.device_dropdown.options = options
+                    self.add_log(f"✓ {len(options)}台のTailscaleデバイスを検出しました")
+                else:
+                    self.add_log("⚠ 接続可能なTailscaleデバイスが見つかりません")
+                self.page.update()
+        except Exception as e:
+            self.add_log(f"Tailscaleデバイスの取得に失敗: {str(e)}")
+
+    def _check_vtube_studio(self) -> None:
+        """VTube Studioの状態チェック"""
+        vtube_ok, vtube_message = check_and_setup_vtube_studio()
+        if self.page and self.vtube_status_text:
+            self.vtube_status_text.value = "起動中" if vtube_ok else "起動前"
+            self.vtube_status_text.color = (
+                Colors.GREEN if vtube_ok else Colors.SECONDARY
+            )
+            self.page.update()
+        if vtube_ok:
+            self.add_log(f"VTube Studio: {vtube_message}")
+
+    def _check_chrome_extensions_and_google_login(self) -> None:
+        """Chrome拡張機能のチェック"""
+
+        manager = PrecheckManager()
+
+        # Auto-Admitチェック
+        try:
+            result = manager.check_extension(
+                "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb",
+                "Auto-Admit",
+            )
+            self.check_states["auto_admit"] = result
+            if self.page:
+                self.auto_admit_status.value = (
+                    "✓ インストール済み" if result else "✗ 未インストール"
+                )
+                self.auto_admit_status.color = Colors.GREEN if result else Colors.ERROR
+                self.auto_admit_button.visible = not result
+                self.page.update()
+        except Exception as e:
+            self.add_log(f"Auto-Admitチェックエラー: {str(e)}")
+            self._set_extension_error("auto_admit")
+
+        # Screen Captureチェック
+        try:
+            result = manager.check_extension(
+                "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc",
+                "Screen Capture",
+            )
+            self.check_states["screen_capture"] = result
+            if self.page:
+                self.screen_capture_status.value = (
+                    "✓ インストール済み" if result else "✗ 未インストール"
+                )
+                self.screen_capture_status.color = (
+                    Colors.GREEN if result else Colors.ERROR
+                )
+                self.screen_capture_button.visible = not result
+                self.page.update()
+        except Exception as e:
+            self.add_log(f"Screen Captureチェックエラー: {str(e)}")
+            self._set_extension_error("screen_capture")
+
+        # Googleログインチェック
+        try:
+            manager = PrecheckManager()
+            result = manager.check_google_login()
+            self.check_states["google_login"] = result
+            if self.page:
+                self.google_login_status.value = (
+                    "✓ ログイン済み" if result else "✗ 未ログイン"
+                )
+                self.google_login_status.color = (
+                    Colors.GREEN if result else Colors.ERROR
+                )
+                self.google_login_button.visible = not result
+                self.page.update()
+        except Exception as e:
+            self.add_log(f"Googleログインチェックエラー: {str(e)}")
+            self._set_login_error()
+
+    def _set_extension_error(self, extension_type: str) -> None:
+        """拡張機能チェックエラー時の処理"""
+        if self.page:
+            if extension_type == "auto_admit":
+                self.auto_admit_status.value = "✗ チェック失敗"
+                self.auto_admit_status.color = Colors.ERROR
+                self.auto_admit_button.visible = True
+            elif extension_type == "screen_capture":
+                self.screen_capture_status.value = "✗ チェック失敗"
+                self.screen_capture_status.color = Colors.ERROR
+                self.screen_capture_button.visible = True
+            self.page.update()
+
+    def _set_login_error(self) -> None:
+        """ログインチェックエラー時の処理"""
+        if self.page:
+            self.google_login_status.value = "✗ チェック失敗"
+            self.google_login_status.color = Colors.ERROR
+            self.google_login_button.visible = True
+            self.page.update()
+
     def _run_background_checks(self) -> None:
         """バックグラウンドで事前チェックを実行"""
         import threading
+        from concurrent.futures import ThreadPoolExecutor, wait
 
-        def check_thread():
+        def run_all_checks():
             try:
+                self.add_log("システムチェックを開始しています...")
+
                 # チェック開始時は接続ボタンを無効化
                 if self.page and self.connect_button:
                     self.connect_button.disabled = True
                     self.page.update()
 
-                # VTube Studioの状態チェック
-                vtube_ok, vtube_message = check_and_setup_vtube_studio()
-                if self.page and self.vtube_status_text:
-                    self.vtube_status_text.value = "起動中" if vtube_ok else "起動前"
-                    self.vtube_status_text.color = (
-                        Colors.GREEN if vtube_ok else Colors.SECONDARY
-                    )
-                    self.page.update()
-                if vtube_ok:
-                    self.add_log(f"VTube Studio: {vtube_message}")
+                # 並列実行用のExecutor
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    # 各チェックを並列実行
+                    futures = [
+                        executor.submit(self._check_tailscale_devices),
+                        executor.submit(self._check_vtube_studio),
+                        executor.submit(self._check_chrome_extensions_and_google_login),
+                    ]
 
-                self.add_log("システムチェックを開始しています...")
-
-                # PrecheckManagerのインスタンスを作成
-                manager = PrecheckManager()
-
-                # 各チェックを個別に実行
-                # Auto-Admitチェック
-                try:
-                    result = manager.check_extension(
-                        "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb",
-                        "Auto-Admit",
-                    )
-                    self.check_states["auto_admit"] = result
-                    if self.page:
-                        self.auto_admit_status.value = (
-                            "✓ インストール済み" if result else "✗ 未インストール"
-                        )
-                        self.auto_admit_status.color = (
-                            Colors.GREEN if result else Colors.ERROR
-                        )
-                        self.auto_admit_button.visible = not result
-                        self.page.update()
-                except Exception as e:
-                    self.add_log(f"Auto-Admitチェックエラー: {str(e)}")
-                    if self.page:
-                        self.auto_admit_status.value = "✗ チェック失敗"
-                        self.auto_admit_status.color = Colors.ERROR
-                        self.auto_admit_button.visible = True
-                        self.page.update()
-
-                # Screen Captureチェック
-                try:
-                    result = manager.check_extension(
-                        "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc",
-                        "Screen Capture",
-                    )
-                    self.check_states["screen_capture"] = result
-                    if self.page:
-                        self.screen_capture_status.value = (
-                            "✓ インストール済み" if result else "✗ 未インストール"
-                        )
-                        self.screen_capture_status.color = (
-                            Colors.GREEN if result else Colors.ERROR
-                        )
-                        self.screen_capture_button.visible = not result
-                        self.page.update()
-                except Exception as e:
-                    self.add_log(f"Screen Captureチェックエラー: {str(e)}")
-                    if self.page:
-                        self.screen_capture_status.value = "✗ チェック失敗"
-                        self.screen_capture_status.color = Colors.ERROR
-                        self.screen_capture_button.visible = True
-                        self.page.update()
-
-                # Googleログインチェック
-                try:
-                    # _check_google_loginは非同期メソッドではないので直接呼び出し
-                    result = manager.check_google_login()
-                    self.check_states["google_login"] = result
-                    if self.page:
-                        self.google_login_status.value = (
-                            "✓ ログイン済み" if result else "✗ 未ログイン"
-                        )
-                        self.google_login_status.color = (
-                            Colors.GREEN if result else Colors.ERROR
-                        )
-                        self.google_login_button.visible = not result
-                        self.page.update()
-                except Exception as e:
-                    self.add_log(f"Googleログインチェックエラー: {str(e)}")
-                    if self.page:
-                        self.google_login_status.value = "✗ チェック失敗"
-                        self.google_login_status.color = Colors.ERROR
-                        self.google_login_button.visible = True
-                        self.page.update()
+                    # すべてのチェックが完了するまで待機
+                    wait(futures)
 
                 # すべてのチェック完了
                 all_passed = all(self.check_states.values())
                 if all_passed:
                     self.add_log("✓ すべてのシステムチェックが完了しました")
-                    # すべてOKなら接続ボタンを有効化
-                    if self.page and self.connect_button:
-                        self.connect_button.disabled = False
+                    # すべてOKかつデバイスが存在する場合のみ接続ボタンを有効化
+                    if self.page and self.connect_button and self.device_dropdown:
+                        has_devices = bool(self.device_dropdown.options)
+                        self.connect_button.disabled = not has_devices
+                        if not has_devices:
+                            self.add_log("⚠ 接続可能なデバイスがありません")
                         self.page.update()
                 else:
                     failed_items = [k for k, v in self.check_states.items() if not v]
@@ -591,7 +647,7 @@ class RemoteGUI:
                 self.add_log(f"バックグラウンドチェックエラー: {str(e)}")
 
         # バックグラウンドスレッドで実行
-        thread = threading.Thread(target=check_thread, daemon=True)
+        thread = threading.Thread(target=run_all_checks, daemon=True)
         thread.start()
 
     def _on_exit(self, _e) -> None:

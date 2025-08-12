@@ -65,7 +65,8 @@ class MeetParticipant:
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
-        options.add_argument("--window-size=1920,1080")
+        # 全画面モードで起動
+        options.add_argument("--start-fullscreen")
 
         self.driver = webdriver.Chrome(options=options)
 

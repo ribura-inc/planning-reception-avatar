@@ -207,7 +207,3 @@ class TailscaleUtils:
 
         except Exception as e:
             return False, f"Tailscale検証中にエラーが発生しました: {e}"
-
-
-# 後方互換性のためのエイリアス
-check_and_setup_tailscale = TailscaleUtils.check_and_setup_tailscale

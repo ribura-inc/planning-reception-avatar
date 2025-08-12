@@ -134,8 +134,8 @@ class WebDriverManager:
             chrome_options.add_experimental_option("useAutomationExtension", False)
             chrome_options.add_argument("--disable-gpu")
 
-            # ウィンドウサイズ設定
-            chrome_options.add_argument("--window-size=1920,1080")
+            # 全画面モードで起動
+            chrome_options.add_argument("--start-fullscreen")
 
         try:
             service = Service()
