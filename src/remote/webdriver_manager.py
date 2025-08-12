@@ -30,6 +30,7 @@ class WebDriverManager:
     _driver_lock = threading.Lock()
     _reference_count = 0
     _chrome_pid: int | None = None
+    _current_headless: bool | None = None
 
     def __new__(cls):
         with cls._lock:
@@ -56,10 +57,19 @@ class WebDriverManager:
                 try:
                     # 既存のドライバーが有効かチェック
                     _ = self._driver.current_url
-                    logger.info(
-                        f"既存のWebDriverインスタンスを再利用 (参照カウント: {self._reference_count})"
-                    )
-                    return self._driver
+                    
+                    # headless設定が変更されている場合は再作成
+                    if self._current_headless is not None and self._current_headless != headless:
+                        logger.info(
+                            f"headless設定が変更されたため、ドライバーを再作成します "
+                            f"(現在: {self._current_headless} -> 要求: {headless})"
+                        )
+                        self._cleanup_driver()
+                    else:
+                        logger.info(
+                            f"既存のWebDriverインスタンスを再利用 (参照カウント: {self._reference_count})"
+                        )
+                        return self._driver
                 except Exception:
                     # 無効なドライバーをクリーンアップ
                     logger.info("既存のWebDriverが無効になっていたため、再作成します")
@@ -67,6 +77,7 @@ class WebDriverManager:
 
             # 新しいドライバーを作成
             self._driver = self._create_driver(headless=headless)
+            self._current_headless = headless
             self._get_chrome_pid()
             logger.info(
                 f"新しいWebDriverインスタンスを作成 (参照カウント: {self._reference_count})"
@@ -176,6 +187,7 @@ class WebDriverManager:
             finally:
                 self._driver = None
                 self._chrome_pid = None
+                self._current_headless = None
 
     def is_driver_active(self) -> bool:
         """WebDriverが有効かどうかを確認"""
