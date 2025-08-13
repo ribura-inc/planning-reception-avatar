@@ -33,7 +33,7 @@ class TailscaleUtils:
                 [tailscale_cmd, "status", "--json"],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=10,
             )
 
             if result.returncode != 0:
