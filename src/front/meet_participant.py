@@ -128,7 +128,7 @@ class MeetParticipant:
             logger.info("参加をリクエストしました")
 
             # Geminiポップアップ処理
-            self._handle_gemini_popup()
+            # self._handle_gemini_popup() # Ribura垢でない場合は表示されない
             return True
 
         except Exception as e:
