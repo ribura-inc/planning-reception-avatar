@@ -21,8 +21,7 @@ def _launch_vtube_studio() -> bool:
     """VTube Studioを起動"""
     try:
         # プラットフォーム別のパスを取得
-        vtube_paths = PlatformUtils.get_vtube_studio_paths()
-        vtube_path = PlatformUtils.find_executable(vtube_paths)
+        vtube_path = PlatformUtils.get_vtube_studio_path()
 
         if not vtube_path:
             logger.error("VTube Studio application not found")

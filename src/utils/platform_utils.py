@@ -22,35 +22,18 @@ class PlatformUtils:
         return Platform.from_system(system)
 
     @staticmethod
-    def get_vtube_studio_paths() -> list[str]:
+    def get_vtube_studio_path() -> str:
         """プラットフォーム別のVTube Studio実行ファイルパスを取得"""
         current_platform = PlatformUtils.get_platform()
 
         if current_platform == Platform.WINDOWS:
-            return [
-                r"C:\Program Files (x86)\Steam\steamapps\common\VTube Studio\VTubeStudio.exe",
-                r"C:\Users\%USERNAME%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Steam\VTube Studio.url",
-            ]
+            os.chdir("C:\\Program Files (x86)\\Steam\\steamapps\\common\\VTube Studio")
+            return r"C:\Program Files (x86)\Steam\steamapps\common\VTube Studio\start_without_steam.bat"
         elif current_platform == Platform.MACOS:
-            return [
-                "/Applications/VTube Studio.app",
-                os.path.expanduser(
-                    "~/Library/Application Support/Steam/steamapps/common/VTube Studio/VTubeStudio.app"
-                ),
-            ]
+            return "/Applications/VTube Studio.app"
         else:
             logger.warning(f"VTube Studio paths not defined for {current_platform}")
-            return []
-
-    @staticmethod
-    def find_executable(paths: list[str]) -> str | None:
-        """指定されたパスリストから最初に見つかった実行可能ファイルを返す"""
-        for path in paths:
-            expanded_path = os.path.expandvars(path)
-            if os.path.exists(expanded_path):
-                logger.info(f"Found executable: {expanded_path}")
-                return expanded_path
-        return None
+            return ""
 
     @staticmethod
     def launch_application(app_path: str) -> bool:
