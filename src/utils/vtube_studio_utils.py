@@ -4,6 +4,7 @@ VTube Studioの実行状態確認
 """
 
 import logging
+import os
 import subprocess
 import threading
 import time
@@ -33,7 +34,9 @@ def _launch_vtube_studio() -> bool:
                 detached=True,
             )
         elif current_platform == Platform.MACOS:
-            vtube_path = "/Applications/VTube Studio.app"
+            vtube_path = os.path.expanduser(
+                "~/Library/Application Support/Steam/steamapps/common/VTube Studio/VTubeStudio.app"
+            )
             subprocess.Popen(["open", vtube_path])
         else:
             logger.error(
