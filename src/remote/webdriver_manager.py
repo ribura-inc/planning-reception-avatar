@@ -127,7 +127,6 @@ class WebDriverManager:
                     "intl.accept_languages": "ja,en-US,en",
                     "profile.default_content_setting_values.media_stream_mic": 1,
                     "profile.default_content_setting_values.media_stream_camera": 1,
-                    "profile.default_content_setting_values.desktop_capture": 0,
                     "profile.default_content_setting_values.geolocation": 0,
                     "profile.default_content_setting_values.notifications": 2,
                 },
