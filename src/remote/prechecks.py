@@ -21,7 +21,6 @@ class PrecheckManager:
 
     # 拡張機能のURL
     AUTO_ADMIT_EXTENSION_URL = "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
-    SCREEN_CAPTURE_EXTENSION_URL = "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc"
 
     def __init__(self):
         """初期化"""
@@ -29,7 +28,6 @@ class PrecheckManager:
         self.check_results: dict[str, Any] = {
             "google_login": False,
             "auto_admit": False,
-            "screen_capture": False,
             "errors": [],
         }
 
@@ -92,7 +90,7 @@ class PrecheckManager:
                     return False
             # Chrome拡張機能ページを開く
             self.driver.get(extension_url)
-            time.sleep(3)
+            time.sleep(4)
 
             try:
                 WebDriverWait(self.driver, 3).until(

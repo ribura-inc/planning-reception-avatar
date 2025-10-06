@@ -47,15 +47,12 @@ class RemoteGUI:
         # Chrome拡張機能個別ステータス
         self.auto_admit_status: ft.Text | None = None
         self.auto_admit_button: ft.OutlinedButton | None = None
-        self.screen_capture_status: ft.Text | None = None
-        self.screen_capture_button: ft.OutlinedButton | None = None
         self.google_login_status: ft.Text | None = None
         self.google_login_button: ft.OutlinedButton | None = None
 
         # チェック状態
         self.check_states = {
             "auto_admit": False,
-            "screen_capture": False,
             "google_login": False,
         }
 
@@ -163,20 +160,6 @@ class RemoteGUI:
             height=30,
         )
 
-        self.screen_capture_status = ft.Text(
-            "チェック中...",
-            size=12,
-            color=Colors.SECONDARY,
-        )
-
-        self.screen_capture_button = ft.OutlinedButton(
-            text="インストール",
-            icon=Icons.DOWNLOAD,
-            visible=False,
-            on_click=lambda _: self._open_extension_page("screen_capture"),
-            height=30,
-        )
-
         self.google_login_status = ft.Text(
             "チェック中...",
             size=12,
@@ -223,18 +206,6 @@ class RemoteGUI:
                                             ),
                                             self.auto_admit_status,
                                             self.auto_admit_button,
-                                        ],
-                                        spacing=10,
-                                    ),
-                                    ft.Row(
-                                        [
-                                            ft.Text(
-                                                "  • Screen Capture:",
-                                                size=12,
-                                                color=Colors.SECONDARY,
-                                            ),
-                                            self.screen_capture_status,
-                                            self.screen_capture_button,
                                         ],
                                         spacing=10,
                                     ),
@@ -443,7 +414,6 @@ class RemoteGUI:
         """拡張機能のインストールページを開く"""
         urls = {
             "auto_admit": "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb",
-            "screen_capture": "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc",
         }
 
         if extension_type in urls:
@@ -543,26 +513,6 @@ class RemoteGUI:
             self.add_log(f"Auto-Admitチェックエラー: {str(e)}")
             self._set_extension_error("auto_admit")
 
-        # Screen Captureチェック
-        try:
-            result = manager.check_extension(
-                "https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc",
-                "Screen Capture",
-            )
-            self.check_states["screen_capture"] = result
-            if self.page:
-                self.screen_capture_status.value = (
-                    "✓ インストール済み" if result else "✗ 未インストール"
-                )
-                self.screen_capture_status.color = (
-                    Colors.GREEN if result else Colors.ERROR
-                )
-                self.screen_capture_button.visible = not result
-                self.page.update()
-        except Exception as e:
-            self.add_log(f"Screen Captureチェックエラー: {str(e)}")
-            self._set_extension_error("screen_capture")
-
         # Googleログインチェック
         try:
             manager = PrecheckManager()
@@ -588,10 +538,6 @@ class RemoteGUI:
                 self.auto_admit_status.value = "✗ チェック失敗"
                 self.auto_admit_status.color = Colors.ERROR
                 self.auto_admit_button.visible = True
-            elif extension_type == "screen_capture":
-                self.screen_capture_status.value = "✗ チェック失敗"
-                self.screen_capture_status.color = Colors.ERROR
-                self.screen_capture_button.visible = True
             self.page.update()
 
     def _set_login_error(self) -> None:

@@ -127,18 +127,13 @@ class WebDriverManager:
                     "intl.accept_languages": "ja,en-US,en",
                     "profile.default_content_setting_values.media_stream_mic": 1,
                     "profile.default_content_setting_values.media_stream_camera": 1,
-                    "profile.default_content_setting_values.desktop_capture": 1,
+                    "profile.default_content_setting_values.desktop_capture": 0,
                     "profile.default_content_setting_values.geolocation": 0,
                     "profile.default_content_setting_values.notifications": 2,
                 },
             )
 
             # その他オプション
-            chrome_options.add_argument("--enable-usermedia-screen-capturing")
-            # chrome_options.add_argument("--use-fake-ui-for-media-stream") # これは有効にしたらダメ
-            chrome_options.add_argument(
-                "--auto-select-desktop-capture-source=VTube Studio"
-            )
             chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_experimental_option(
                 "excludeSwitches", ["enable-automation"]

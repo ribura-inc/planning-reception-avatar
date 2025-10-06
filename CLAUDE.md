@@ -102,8 +102,7 @@ python -m src.remote.main front-pc-name --skip-account-check
 - Rye (パッケージ管理)
 - Chrome + 拡張機能:
   - Auto-Admit for Google Meet
-  - Screen Capture Virtual Camera
-- VTube Studio（macOS版）
+- VTube Studio（Windows版 - バーチャルWebカメラ機能を使用）
 - Google Cloud Project (Meet API用)
 - Tailscale (デバイス名指定時)
 
@@ -132,9 +131,13 @@ rye sync
    - URL: <https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb>
    - 機能: 参加者の自動承認
 
-2. **Screen Capture Virtual Camera**
-   - URL: <https://chromewebstore.google.com/detail/screen-capture-virtual-ca/jcnomcmilppjoogdhhnadpcabpdlikmc>
-   - 機能: VTube Studioの映像をカメラとして使用
+### VTube Studio設定
+
+VTube StudioのバーチャルWebカメラ機能を有効化してください：
+
+1. VTube Studioを起動
+2. 設定からバーチャルWebカメラ機能を有効化
+3. カメラ名が「VTube Studio Camera」として登録されることを確認
 
 ## ディレクトリ構造
 
