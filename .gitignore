@@ -177,8 +177,5 @@ cython_debug/
 token.json
 credentials.json
 
-# avatar
-.avatar/
-
 # serena 
 .serena/
