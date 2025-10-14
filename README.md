@@ -1,57 +1,64 @@
 # VTuber Reception System
 
-無人ホテルフロント受付システム - VTuberアバターを介した遠隔受付対応
+## 🎯 プロジェクトについて
 
-## 概要
+- クライアント：プランニングオフィス株式会社
+- フェーズ：1拠点での動作確認（プランニングは3拠点のホテルを構える）
+- システム名：VTuber受付システム
+- システム概要：ホテルのフロント業務を無人化するためのシステムです。VTube StudioとGoogle Meetを組み合わせ、リモートオペレーターがアバターを介して接客対応を行います。
 
-ホテルのフロント業務を無人化するためのシステムです。VTube StudioとGoogle Meetを組み合わせ、リモートオペレーターがアバターを介して接客対応を行います。
 
-## システム構成
+## 📚 ドキュメント
 
-```mermaid
-graph LR
-    フロントPC[フロントPC<br>(受付端末)] --> GoogleMeet[Google Meet<br>(通信基盤)]
-    オペレーターPC[オペレーターPC<br>(制御端末)] --> GoogleMeet
-    オペレーターPC --> VTubeStudio[VTube Studio<br>(アバター制御)]
-```
+-
 
-## 主要機能
+## 🚀 環境構築
 
-1. **自動接続管理**: Google Meetの24時間制限と熱対策を考慮した接続制御
-2. **ワンクリック起動**: オペレーター側からの簡単な呼び出し
-3. **アバター連携**: VTube Studioを使用したリアルタイム表情・動作制御
-4. **画面共有**: 館内案内や資料表示
-
-## セットアップ
-
-### 前提条件
-
-- Python 3.11以上
-- Rye (パッケージ管理)
-- Screen Virtual Capture Camera（Chromeの拡張機能）
-- VTube Studio（アバター制御）
-- Google Cloud Project (Meet API用)
-
-### インストール
+### 1. リポジトリをクローン
 
 ```bash
-# リポジトリのクローン
-git clone https://github.com/your-org/planning-reception-avatar.git
+git clone <repository-url>
 cd planning-reception-avatar
-
-# Ryeのインストール (未インストールの場合)
-curl -sSf https://rye.astral.sh/get | bash
-
-# 依存関係のインストール
-rye sync
-
-# Google Cloud認証設定
-# 1. Google Cloud ConsoleでMeet APIを有効化
-# 2. credentials.jsonをプロジェクトルートに配置
-# 3. 初回実行時にブラウザで認証
 ```
 
-### Tailscaleセットアップ（推奨）
+### 2. lefthookのセットアップ
+
+- lefthookをグローバルにインストールしてください。詳細なインストール手順は [lefthook公式ドキュメント](https://lefthook.dev/installation/index.html) をご確認ください。
+  - macOS (Homebrew)
+
+    ```bash
+    brew install lefthook
+    ```
+
+  - Linux (Debian/Ubuntu)
+
+    ```bash
+    sudo apt install lefthook
+    ```
+
+  - Node.js (グローバル)
+
+    ```bash
+    npm install -g lefthook
+    ```
+
+- セットアップ完了後、下記のコマンドを実行することで、`.git/hooks/` に hooks の設定が自動インストールされます。
+
+    ```bash
+    lefthook install
+    ```
+
+    > **補足**: `lefthook.yaml` を修正した場合は、再度 `lefthook install` を実行して設定を反映してください。
+
+### 3. serenaのセットアップ（claude利用者）
+
+> **注意**: 2025/09/20時点では、serena を導入したほうが claude の性能が上がると評判にある
+
+```sh
+claude mcp add serena -- uvx --from git+https://github.com/oraios/serena serena-mcp-server --context ide-assistant --project $(pwd)
+```
+
+### 4. Tailscaleセットアップ
 
 異なるネットワーク間でのデバイス通信には[Tailscale](https://tailscale.com)を使用：
 
@@ -59,36 +66,15 @@ rye sync
 # MacOS
 [Tailscale for MacOS](https://tailscale.com/download/mac) からインストーラーをダウンロードしてインストール
 
-# Ubuntu/Debian
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
+# Windows
+TODO
 
 # 接続確認
 tailscale status
 ```
 
-## 使用方法
+### 5. VTube Studioのインストール
 
-### 1. フロントPC側（先に起動）
-
-```bash
-python front_pc.py --display-name "Hotel Reception"
-```
-
-### 2. リモートPC側（後に起動）
-
-```bash
-# ローカルネットワーク
-python remote_pc.py --front-ip 192.168.1.100
-
-# Tailscale使用時
-python remote_pc.py --front-ip my-front-pc
-```
-
-### 動作フロー
-
-1. フロントPC起動 → サーバー待機
-2. リモートPC起動 → Meet URL生成・送信
-3. 両PC自動Meet参加
-4. Auto-Admit有効化
-5. 受付対応開始
+- VTube Studioをインストールしてください。
+- バーチャルWEBカメラ機能を用いて、VTube Studioのアバター画面をカメラとして用います。
+  - MacではVTube Studioのバーチャルカメラが利用できない → 素のカメラで動作確認

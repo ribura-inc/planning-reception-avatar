@@ -1,0 +1,241 @@
+# Docs: https://github.com/DavidAnson/markdownlint/blob/a852407c887ec60949aa5365ed964bab833f962f/doc/Rules.md
+---
+
+# MD001/heading-increment - Heading levels should only increment by one level at a time
+# ドキュメント構造の崩れを防ぐため有効化
+MD001: true
+
+# MD002/first-heading-h1 - First heading should be a top-level heading
+# 先頭H1は運用やテンプレにより不定。強制しない
+MD002: false
+
+# MD003/heading-style - Heading style
+# 見出しスタイルはATXに統一（### など）。混在防止
+MD003:
+  style: atx
+
+# MD004/ul-style - Unordered list style
+# 先頭記号の混在を防止。最初に登場した記号に合わせる
+MD004:
+  style: consistent
+
+# MD005/list-indent - Inconsistent indentation for list items at the same level
+# 同レベルのインデントずれを検出
+MD005: true
+
+# MD007/ul-indent - Unordered list indentation
+# ネストのインデントは2スペースに統一
+MD007:
+  indent: 2
+
+# MD009/no-trailing-spaces - Trailing spaces
+# 末尾スペースを禁止。改行意図の2スペースは許可
+MD009:
+  br_spaces: 2
+
+# MD010/no-hard-tabs - Hard tabs
+# タブによるレンダ差異を避ける
+MD010: true
+
+# MD011/no-reversed-links - Reversed link syntax
+# リンク記法の逆転ミスを検出
+MD011: true
+
+# MD012/no-multiple-blanks - Multiple consecutive blank lines
+# 2行以上の空行は許容（書き手の裁量を尊重）
+MD012: false
+
+# MD013/line-length - Line length
+# 折返し幅は運用依存。ハード制限しない
+MD013: false
+
+# MD014/commands-show-output - Dollar signs used before commands without showing output
+# コピペ性を重視して $ 付けないことを促す
+MD014: true
+
+# MD018/no-missing-space-atx - No space after hash on atx style heading
+# 見出し「#Heading」などの誤記を防ぐ
+MD018: true
+
+# MD019/no-multiple-space-atx - Multiple spaces after hash on atx style heading
+# 見出しの余分スペースを防ぐ
+MD019: true
+
+# MD020/no-missing-space-closed-atx - No space inside hashes on closed atx style heading
+# 閉じATX使用時のスペース欠如を検出
+MD020: true
+
+# MD021/no-multiple-space-closed-atx - Multiple spaces inside hashes on closed atx style heading
+# 閉じATX使用時の余分スペースを検出
+MD021: true
+
+# MD022/blanks-around-headings - Headings should be surrounded by blank lines
+# ヘッダ上下の空行は下記のように設定
+MD022:
+  lines_above:
+    - 2
+  lines_below:
+    - 1
+
+# MD023/heading-start-left - Headings must start at the beginning of the line
+# 行頭から開始を強制（インデント誤記を防ぐ）
+MD023: true
+
+# MD024/no-duplicate-heading - Multiple headings with the same content
+# 同一階層での重複見出しのみ禁止（changelog等に配慮）
+MD024:
+  siblings_only: true
+
+# MD025/single-h1 - Multiple top-level headings in the same document
+# 1ファイル複数H1を許容（README等のセクション設計次第）
+MD025: false
+
+# MD026/no-trailing-punctuation - Trailing punctuation in heading
+# 見出し末尾の句読点は許容
+MD026: false
+
+# MD027/no-multiple-space-blockquote - Multiple spaces after blockquote symbol
+# 「> 」の余計なスペースを禁止
+MD027: true
+
+# MD028/no-blanks-blockquote - Blank line inside blockquote
+# 引用の空行による解釈違いを防ぐ
+MD028: true
+
+# MD029/ol-prefix - Ordered list item prefix
+# 連番/1.統一のいずれも可。デフォの one_or_ordered を採用
+MD029:
+  style: one_or_ordered
+
+# MD030/list-marker-space - Spaces after list markers
+# リスト記号の後は1スペースに統一
+MD030:
+  ul_single: 1
+  ol_single: 1
+  ul_multi: 1
+  ol_multi: 1
+
+# MD031/blanks-around-fences - Fenced code blocks should be surrounded by blank lines
+# コードフェンス上下の空行は必須
+MD031: true
+
+# MD032/blanks-around-lists - Lists should be surrounded by blank lines
+# リスト前後の空行で誤解析を防ぐ
+MD032: true
+
+# MD033/no-inline-html - Inline HTML
+# md内のインラインHTMLを許容（拡張用途のため）
+MD033: false
+
+# MD034/no-bare-urls - Bare URL used
+# プレーンURL使用を許容（執筆負荷を下げる）
+MD034: false
+
+# MD035/hr-style - Horizontal rule style
+# HRスタイルの混在を防ぐ（最初の形式に合わせる）
+MD035:
+  style: consistent
+  
+# MD036/no-emphasis-as-heading - Emphasis used instead of a heading
+# 強調でのセクション区切りを禁止
+MD036: true
+
+# MD037/no-space-in-emphasis - Spaces inside emphasis markers
+# 強調内の不要スペースを検出
+MD037: true
+
+# MD038/no-space-in-code - Spaces inside code span elements
+# インラインコードの不要スペースを検出
+MD038: true
+
+# MD039/no-space-in-links - Spaces inside link text
+# リンクテキストの外側スペースを禁止
+MD039: true
+
+# MD040/fenced-code-language - Fenced code blocks should have a language specified
+# シンタックスハイライトのため言語指定を推奨。未指定は警告
+MD040: true
+
+# MD041/first-line-heading - First line in a file should be a top-level heading
+# 先頭H1は強制しない（TOCやバッジ等の前置きを許容）
+MD041: false
+
+# MD042/no-empty-links - No empty links
+# 空リンクを禁止
+MD042: true
+
+# MD043/required-headings - Required heading structure
+# 見出しの厳格構造は強制しない
+MD043: false
+
+# MD044/proper-names - Proper names should have the correct capitalization
+# デフォルトでは名前リスト未設定のため実質無効。将来拡張のため有効維持
+MD044: true
+
+# MD045/no-alt-text - Images should have alternate text
+# 画像の代替テキストを必須（アクセシビリティ）
+MD045: true
+
+# MD046/code-block-style - Code block style
+# コードブロックはフェンスに統一
+MD046:
+  style: fenced
+
+# MD047/single-trailing-newline - Files should end with a single newline character
+# 最終行の改行を必須化（ツール互換）
+MD047: true
+
+# MD048/code-fence-style - Code fence style
+# フェンスはバッククォートに統一
+MD048:
+  style: backtick
+
+# MD049/emphasis-style - Emphasis style
+# 強調はアスタリスクに統一（_ の語中強調衝突を回避）
+MD049:
+  style: asterisk
+
+# MD050/strong-style - Strong style
+# 太字はアスタリスクに統一
+MD050:
+  style: asterisk
+
+# MD051/link-fragments - Link fragments should be valid
+# セクションリンクの断片を検証。大文字小文字は無視して実運用に寛容
+MD051:
+  ignore_case: true
+
+# MD052/reference-links-images - Reference links and images should use a label that is defined
+# 未定義の参照ラベルを検出（ショートカットはデフォルト未対象）
+MD052: true
+
+# MD053/link-image-reference-definitions - Link and image reference definitions should be needed
+# 未使用/重複の参照定義を検出
+MD053: true
+
+# MD054/link-image-style - Link and image style
+# すべてのスタイルを許容（運用の自由度を重視）
+MD054:
+  autolink: true
+  inline: true
+  full: true
+  collapsed: true
+  shortcut: true
+  url_inline: true
+
+# MD055/table-pipe-style - Table pipe style
+# テーブルの両端パイプ有無を文書内で統一
+MD055:
+  style: consistent
+
+# MD056/table-column-count - Table column count
+# 列数不一致を検出（データ欠落防止）
+MD056: true
+
+# MD058/blanks-around-tables - Tables should be surrounded by blank lines
+# テーブル前後に空行を要求（誤解析防止）
+MD058: true
+
+# MD059/descriptive-link-text - Link text should be descriptive
+# 「here」などの抽象的リンク文言を禁止
+MD059: true

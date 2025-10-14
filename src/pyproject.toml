@@ -1,0 +1,110 @@
+[project]
+name = "vtuber-reception-system"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "celery[redis]>=5.3.0",
+    "redis>=5.0.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "websockets>=12.0",
+    "obsws-python>=1.6.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy>=2.0.0",
+    "httpx>=0.25.0",
+    "python-dotenv>=1.1.1",
+    "tenacity>=8.2.0",
+    "structlog>=23.2.0",
+    "aiofiles>=23.2.0",
+    "python-multipart>=0.0.6",
+    "click>=8.1.0",
+    "google-apps-meet>=0.1.16",
+    "selenium>=4.33.0",
+    "pyautogui>=0.9.54",
+    "psutil>=5.9.0",
+    "flet[all]>=0.28.3",
+]
+
+[tool.uv]
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "freezegun>=1.2.0",
+    "ruff>=0.1.0",
+    "pyright>=1.1.0",
+    "coverage[toml]>=7.3.0",
+    "pre-commit>=3.5.0",
+    "ipython>=8.17.0",
+    "rich>=13.7.0",
+    "pyinstaller>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+# --------------------------------------------------------------------------------------------------------------------
+# ruff
+# --------------------------------------------------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py313"
+line-length = 119
+indent-width = 4
+
+[tool.ruff.lint]
+# cf. https://docs.astral.sh/ruff/rules/
+## ルール
+select = ["ALL"] # 全てのチェックを有効にする（Verアップグレードで暗黙的にルールが追加されることは受け入れる）
+ignore = [
+    "D1",     # missing-docstring: D1のみをignoreさせることで、docstringを書いた場合は書いた内容にpydocstyleのルールが適用される
+    "TD001",  # invalid-todo-tag: FIXMEも許容するため
+    "TD002",  # missing-todo-author: 作者名を書くのが面倒なため
+    "TD003",  # missing-todo-link: リンクを貼るのが面倒なため
+    "ANN1",   # missing-type-self, missing-type-cls: selfとclsの型ヒントは冗長なため
+    "G004",   # logging-f-string: loggingでf-stringを使いたいので無視する
+    "PGH003", # blanket-type-ignore: 対応が面倒なため
+    "PGH004", # blanket-noqa: 対応が面倒なため
+    "ANN401", # any-type: anyに名前をつけるのは面倒なため
+    "RUF001", # ambiguous-unicode-character-string: 曖昧なUnicode文字を許可
+    "RUF003", # ambiguous-unicode-character-comment: コメントの曖昧なUnicode文字を許可
+    "RUF002", # ambiguous-unicode-character-docstring: docstringの曖昧なUnicode文字を許可
+    "D415",   # first-line-should-end-with-period: docstring第一行の句読点は非強制
+    "ANN002", # missing-type-annotation-for-args: *argsの型アノテーション不足
+    "ANN003", # missing-type-annotation-for-kwargs: **kwargsの型アノテーション不足
+]
+fixable = ["ALL"] ## auto fixの対象
+unfixable = []
+
+[tool.ruff.lint.pylint]
+max-args = 8 # 引数の許容上限
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = [
+    "S101",    # テストファイルではassertの使用を許可
+    "ANN201",  # テスト関数の戻り値アノテーションは不要
+    "ANN202",  # プライベート関数の戻り値アノテーションは不要
+    "PLR2004", # マジックナンバー（HTTPステータスコード等）の使用を許可
+]
+"app/models/*" = [
+    "ERA001", # 一時的に許可する（PoC段階はミニマムなモデルにするため一部をコメントアウトしたい）
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

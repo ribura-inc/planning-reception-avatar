@@ -1,0 +1,17 @@
+pre-commit:
+  parallel: true
+  commands:
+    markdownlint:
+      glob: "**/*.md"
+      run: npx markdownlint-cli2 {staged_files} --config .markdownlint.yaml --fix
+      stage_fixed: true
+    ruff-format:
+      root: "src/"
+      glob: "*.py"
+      run: uvx ruff format {staged_files}
+      stage_fixed: true
+    ruff-check:
+      root: "src/"
+      glob: "*.py"
+      run: uvx ruff check {staged_files} --fix --unsafe-fixes
+      stage_fixed: true

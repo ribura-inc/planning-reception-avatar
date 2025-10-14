@@ -1,161 +1,63 @@
-# VTuber Reception System
+# CLAUDE.md
 
-無人ホテルフロント受付システム - VTuberアバターを介した遠隔受付対応
+このファイルは、Claude Code用のAI専用指示です。人間が参照すべきドキュメントは適宜別ファイルで作成し、AIにも @path/to/import の構文を使用してインポートすること。
 
-## 概要
+## コア
 
-ホテルのフロント業務を無人化するためのシステムです。VTube StudioとGoogle Meetを組み合わせ、リモートオペレーターがアバターを介して接客対応を行います。
+- Always Think in English, but respond in Japanese.
+- For maximum efficiency, whenever you need to perform multiple independent operations, invoke all relevant tools simultaneously rather than sequentially.
+- MUST use subagents for complex problem verification
+- After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding. Use your thinking to plan and iterate based on this new information, and then take the best next action.
+- Do what has been asked; nothing more, nothing less.
+- NEVER create files unless they're absolutely necessary for achieving your goal.
+- ALWAYS prefer editing an existing file to creating a new one.
 
-## システム構成
+## プロジェクトコンテキスト参照
 
-```mermaid
-graph LR
-    フロントPC[フロントPC<br>(受付端末)] --> GoogleMeet[Google Meet<br>(通信基盤)]
-    リモートPC[リモートPC<br>(制御端末)] --> GoogleMeet
-    リモートPC --> VTubeStudio[VTube Studio<br>(アバター制御)]
-    リモートPC -.-> Tailscale[Tailscale<br>(P2P通信)]
-    フロントPC -.-> Tailscale
-```
+開発前に以下のドキュメントを必ず参照してください：
 
-## 主要機能
+- **プロジェクト概要・セットアップ**: @README.md
 
-1. **完全自動起動**: リモートPCのIPまたは名前指定だけで全自動起動
-2. **VTube Studio自動起動**: 未起動時は自動でVTube Studioを起動
-3. **高速接続**: 最適化された通信で2秒以内の接続確立
-4. **自動終了連動**: リモートPCでChrome終了時、フロントPCも自動終了
-5. **プロセス監視**: 異常終了時の自動クリーンアップ
-6. **Tailscale統合**: P2P通信による安全で高速な接続
+## AI開発フロー
 
-## 使用方法
+### 1. 開発前
 
-### 基本的な使用手順
+- TodoWriteでタスク分割・管理
+- 関連ドキュメントを参照して仕様理解
+- 既存コードパターンを確認
 
-1. **フロントPC起動** (一度起動すれば常時待機)
+### 2. 実装
 
-   ```bash
-   # Ryeスクリプト使用（推奨）
-   rye run front
-   
-   # または直接実行
-   python -m src.front.main
-   ```
+@src/README.md を参照すること。
 
-2. **リモートPC起動** (フロントPCのIPまたは名前のみ指定)
+### 3. 品質保証（必須）
 
-   ```bash
-   # Ryeスクリプト使用（推奨） - IPアドレス指定
-   rye run remote 192.168.1.100
-   
-   # Ryeスクリプト使用（推奨） - Tailscaleデバイス名指定
-   rye run remote front-pc-name
-   
-   # または直接実行
-   python -m src.remote.main 192.168.1.100
-   python -m src.remote.main front-pc-name
-   ```
-
-### GUI版実行（開発・デバッグ用）
+- 全実装後に必ず実行：
 
 ```bash
-# フロントPC GUI版
-rye run front-gui
-
-# リモートPC GUI版  
-rye run remote-gui
+# コード品質チェック
+uvx ruff check . --fix
+uvx ruff format .
 ```
 
-### 高度なオプション
+### 4. ドキュメント更新
 
-```bash
-# 拡張機能チェックをスキップ
-python -m src.remote.main front-pc-name --skip-extension-check
+- 既存のドキュメントでアップデートすべき箇所があれば修正
+- 新たにドキュメントで残した方が良い事項があれば作成
 
-# Googleアカウントチェックをスキップ  
-python -m src.remote.main front-pc-name --skip-account-check
-```
+## AI専用制約
 
-## 自動化フロー
+### 厳守事項
 
-### リモートPC側
+- **型安全性**: PythonのType Annotationを全てで利用する（python3.13を利用しているので、 `from typing import List, Dict` は使用せず、 `list`, `dict` でよい）
+- **品質チェック**: Lintエラーは必ず修正してから完了報告
 
-1. VTube Studio自動起動確認
-2. Meet URL生成
-3. フロントPCへ自動接続（最適化済み）
-4. Meet URL送信
-5. Chrome起動・Meet参加
-6. プロセス監視開始
-7. 終了時自動クリーンアップ
+### ドキュメント保守ルール
 
-### フロントPC側
+- 新機能追加時：関連ドキュメントを更新
+- アーキテクチャ変更時：CLAUDE.mdとREADME.mdを更新
 
-1. 常時待機モード
-2. Meet URL自動受信
-3. Chrome自動起動・Meet参加
-4. プロセス監視開始
-5. 終了コマンド受信時自動クリーンアップ
+### 開発判断基準
 
-## セットアップ
-
-### 前提条件
-
-- Python 3.11以上
-- Rye (パッケージ管理)
-- Chrome + 拡張機能:
-  - Auto-Admit for Google Meet
-- VTube Studio（Windows版 - バーチャルWebカメラ機能を使用）
-- Google Cloud Project (Meet API用)
-- Tailscale (デバイス名指定時)
-
-### インストール
-
-```bash
-# リポジトリのクローン
-git clone https://github.com/your-org/planning-reception-avatar.git
-cd planning-reception-avatar
-
-# Ryeのインストール (未インストールの場合)
-curl -sSf https://rye.astral.sh/get | bash
-
-# 依存関係のインストール
-rye sync
-
-# 認証情報の設定
-# Google Cloud Consoleからcredentials.jsonをダウンロードしてプロジェクトルートに配置
-```
-
-### Chrome拡張機能
-
-以下の拡張機能が必要です：
-
-1. **Auto-Admit for Google Meet**
-   - URL: <https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb>
-   - 機能: 参加者の自動承認
-
-### VTube Studio設定
-
-VTube StudioのバーチャルWebカメラ機能を有効化してください：
-
-1. VTube Studioを起動
-2. 設定からバーチャルWebカメラ機能を有効化
-3. カメラ名が「VTube Studio Camera」として登録されることを確認
-
-## ディレクトリ構造
-
-```
-src/
-├── remote/                    # リモートPC用
-│   ├── main.py               # メインエントリーポイント
-│   ├── reception_controller.py # 受付制御
-│   ├── meet_manager.py       # Meet管理
-│   ├── communication_client.py # 通信クライアント
-│   └── communication_client_optimized.py # 最適化通信
-├── front/                     # フロントPC用
-│   ├── main.py               # メインエントリーポイント
-│   ├── reception_handler.py  # 受付ハンドラー
-│   ├── meet_participant.py   # Meet参加者
-│   └── communication_server.py # 通信サーバー
-├── utils/                     # 共通ユーティリティ
-│   ├── tailscale_utils.py    # Tailscale関連
-│   └── vtube_studio_utils.py # VTube Studio関連
-└── config.py                # 設定ファイル
-```
+- 既存パターンに従う（新規パターン作成は避ける）
+- コミットしない（明示的指示がない限り）

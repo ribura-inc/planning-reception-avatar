@@ -1,4 +1,4 @@
-# google cloud
+# google cloud のセットアップ手順
 
 ## 同意画面
 
