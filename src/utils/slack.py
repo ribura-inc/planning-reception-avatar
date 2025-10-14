@@ -2,7 +2,7 @@
 
 import os
 import traceback
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -43,8 +43,7 @@ def send_slack_notification(
     error_traceback: str | None = None,
     location: SessionLocation | None = None,
 ) -> None:
-    """
-    Slack通知を送信
+    """Slack通知を送信
 
     Args:
         notification_type: 通知タイプ（INFO/ERROR）
@@ -58,12 +57,11 @@ def send_slack_notification(
     webhook_url = os.getenv("SLACK_WEBHOOK_URL")
 
     if not webhook_url:
-        print(f"Slack Webhook URLが設定されていません: {title} - {message}")
         return
 
     try:
         # 現在時刻
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
         # 実行場所に応じた絵文字とタイトル
         if location == SessionLocation.FRONT:
@@ -77,10 +75,7 @@ def send_slack_notification(
             location_title = ""
 
         # 通知タイプに応じた色とアイコン
-        if notification_type == NotificationType.INFO:
-            color = "#2196F3"  # 青色
-        else:  # ERROR
-            color = "danger"  # 赤色
+        color = "#2196F3" if notification_type == NotificationType.INFO else "danger"
 
         # タイトルの構築（実行場所が指定されている場合は場所情報を先頭に追加）
         display_title = f"{location_emoji} {location_title}" if location else title
@@ -97,14 +92,15 @@ def send_slack_notification(
         fields.extend(
             [
                 {"title": "実行時刻", "value": now, "short": False},
-            ]
+            ],
         )
 
         # エラーの場合、トレースバックを追加
         if notification_type == NotificationType.ERROR and error_traceback:
             # トレースバックを制限（Slackの制限対策）
-            truncated_traceback = error_traceback[:2000]
-            if len(error_traceback) > 2000:
+            max_traceback_len = 2000
+            truncated_traceback = error_traceback[:max_traceback_len]
+            if len(error_traceback) > max_traceback_len:
                 truncated_traceback += "\n... (truncated)"
 
             fields.append(
@@ -112,7 +108,7 @@ def send_slack_notification(
                     "title": "エラー詳細",
                     "value": f"```{truncated_traceback}```",
                     "short": False,
-                }
+                },
             )
 
         # ペイロード構築
@@ -125,8 +121,8 @@ def send_slack_notification(
                     "text": message,
                     "fields": fields,
                     "footer": "VTuber Reception System - Ribura Inc.",
-                }
-            ]
+                },
+            ],
         }
 
         # Slack Webhook送信
@@ -138,13 +134,14 @@ def send_slack_notification(
         )
 
         # レスポンスチェック
-        if response.status_code == 200:
-            print(f"Slack通知送信完了: {title} - {message}")
+        http_ok = 200
+        if response.status_code == http_ok:
+            pass
         else:
-            print(f"Slack通知送信失敗: {response.status_code} - {response.text}")
+            pass
 
-    except Exception as e:
-        print(f"Slack通知送信エラー: {e}")
+    except Exception:  # noqa: BLE001, S110
+        pass
         # 通知失敗してもメイン処理は継続
 
 
@@ -153,8 +150,7 @@ def notify_usage(
     details: dict[str, Any] | None = None,
     location: SessionLocation | None = None,
 ) -> None:
-    """
-    使用実績通知を送信するヘルパー関数
+    """使用実績通知を送信するヘルパー関数
 
     Args:
         action: 実行されたアクション
@@ -176,8 +172,7 @@ def notify_meet_end(
     additional_info: dict[str, Any] | None = None,
     location: SessionLocation | None = None,
 ) -> None:
-    """
-    Meet終了通知を送信するヘルパー関数
+    """Meet終了通知を送信するヘルパー関数
 
     Args:
         reason: 終了理由
@@ -214,8 +209,7 @@ def notify_error(
     additional_info: dict[str, Any] | None = None,
     location: SessionLocation | None = None,
 ) -> None:
-    """
-    エラー通知を送信するヘルパー関数
+    """エラー通知を送信するヘルパー関数
 
     Args:
         error: 発生したエラー

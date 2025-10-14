@@ -1,16 +1,16 @@
-"""
-VTube Studio関連ユーティリティ
+"""VTube Studio関連ユーティリティ.
+
 VTube Studioの実行状態確認
 """
 
 import logging
-import os
 import subprocess
 import threading
 import time
 from pathlib import Path
 
-from ..models.enums import Platform
+from models.enums import Platform
+
 from .platform_utils import PlatformUtils
 from .slack import SessionLocation, notify_error
 
@@ -34,13 +34,13 @@ def _launch_vtube_studio() -> bool:
                 detached=True,
             )
         elif current_platform == Platform.MACOS:
-            vtube_path = os.path.expanduser(
-                "~/Library/Application Support/Steam/steamapps/common/VTube Studio/VTubeStudio.app"
+            vtube_path = (
+                Path.home() / "Library/Application Support/Steam/steamapps/common/VTube Studio/VTubeStudio.app"
             )
-            subprocess.Popen(["open", vtube_path])
+            subprocess.Popen(["open", str(vtube_path)])  # noqa: S603, S607
         else:
             logger.error(
-                f"Unsupported platform for launching applications: {current_platform}"
+                f"Unsupported platform for launching applications: {current_platform}",
             )
             return False
 
@@ -51,14 +51,13 @@ def _launch_vtube_studio() -> bool:
         return _check_vtube_studio_running()
 
     except Exception as e:
-        logger.error(f"Failed to launch VTube Studio: {e}")
+        logger.exception("Failed to launch VTube Studio")
         notify_error(e, "VTube Studio起動", {}, location=SessionLocation.REMOTE)
         return False
 
 
 def check_and_setup_vtube_studio() -> tuple[bool, str]:
-    """
-    VTube Studioの実行状態を確認し、必要に応じて起動
+    """VTube Studioの実行状態を確認し、必要に応じて起動
 
     Returns:
         (success, message): 成功フラグとメッセージ
@@ -76,8 +75,7 @@ def check_and_setup_vtube_studio() -> tuple[bool, str]:
                 return True, "VTube Studio launched successfully"
 
         return False, "VTube Studio launched but process not detected"
-    else:
-        return False, "Failed to launch VTube Studio"
+    return False, "Failed to launch VTube Studio"
 
 
 # Windows専用のフラグ（.bat起動用）
@@ -90,7 +88,7 @@ def run_bat_in_thread(
     dir_path: str | Path,
     bat_name: str,
     args: list[str] | None = None,
-    detached: bool = False,
+    detached: bool = False,  # noqa: FBT001, FBT002
 ) -> threading.Thread:
     """指定ディレクトリで .bat を"別スレッド"から非同期起動する.
 
@@ -117,16 +115,15 @@ def run_bat_in_thread(
     if not bat_path.exists():
         raise FileNotFoundError(str(bat_path))
     if bat_path.suffix.lower() != ".bat":
-        raise ValueError("bat_name には拡張子 .bat を指定すること")
+        msg = "bat_name には拡張子 .bat を指定すること"
+        raise ValueError(msg)
 
     argv: list[str] = ["cmd.exe", "/c", "call", str(bat_path), *(args or [])]
-    creationflags: int = (
-        DETACHED_PROCESS | CREATE_NO_WINDOW if detached else CREATE_NEW_CONSOLE
-    )
+    creationflags: int = DETACHED_PROCESS | CREATE_NO_WINDOW if detached else CREATE_NEW_CONSOLE
 
     def _target() -> None:
         # ここで起動を実施（非同期・別スレッド）
-        subprocess.Popen(
+        subprocess.Popen(  # noqa: S603
             argv,
             cwd=str(cwd),
             creationflags=creationflags,
@@ -138,7 +135,9 @@ def run_bat_in_thread(
         )
 
     th = threading.Thread(
-        target=_target, name=f"bat-launch:{bat_path.name}", daemon=True
+        target=_target,
+        name=f"bat-launch:{bat_path.name}",
+        daemon=True,
     )
     th.start()
     return th

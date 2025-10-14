@@ -1,5 +1,5 @@
-"""
-remoteディレクトリ全体で共有するWebDriverマネージャー
+"""remoteディレクトリ全体で共有するWebDriverマネージャー
+
 プロファイルディレクトリの競合を回避するために、
 単一のWebDriverインスタンスを管理する
 """
@@ -11,7 +11,6 @@ import psutil
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-
 from src.config import Config
 from src.models.enums import Platform
 from src.utils.platform_utils import PlatformUtils
@@ -31,13 +30,13 @@ class WebDriverManager:
     _chrome_pid: int | None = None
     _current_headless: bool | None = None
 
-    def __new__(cls):
+    def __new__(cls) -> "WebDriverManager":
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
             return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         # 初期化は一度だけ実行
         if hasattr(self, "_initialized"):
             return
@@ -45,7 +44,7 @@ class WebDriverManager:
 
         self.profile_dir = Config.CONFIG_DIR / "chrome-profile-remote"
 
-    def get_driver(self, headless: bool = False) -> webdriver.Chrome:
+    def get_driver(self, headless: bool = False) -> webdriver.Chrome:  # noqa: FBT001, FBT002
         """共有WebDriverインスタンスを取得"""
         with self._driver_lock:
             self._reference_count += 1
@@ -56,21 +55,18 @@ class WebDriverManager:
                     _ = self._driver.current_url
 
                     # headless設定が変更されている場合は再作成
-                    if (
-                        self._current_headless is not None
-                        and self._current_headless != headless
-                    ):
+                    if self._current_headless is not None and self._current_headless != headless:
                         logger.info(
                             f"headless設定が変更されたため、ドライバーを再作成します "
-                            f"(現在: {self._current_headless} -> 要求: {headless})"
+                            f"(現在: {self._current_headless} -> 要求: {headless})",
                         )
                         self._cleanup_driver()
                     else:
                         logger.info(
-                            f"既存のWebDriverインスタンスを再利用 (参照カウント: {self._reference_count})"
+                            f"既存のWebDriverインスタンスを再利用 (参照カウント: {self._reference_count})",
                         )
                         return self._driver
-                except Exception:
+                except Exception:  # noqa: BLE001
                     # 無効なドライバーをクリーンアップ
                     logger.info("既存のWebDriverが無効になっていたため、再作成します")
                     self._cleanup_driver()
@@ -80,7 +76,7 @@ class WebDriverManager:
             self._current_headless = headless
             self._get_chrome_pid()
             logger.info(
-                f"新しいWebDriverインスタンスを作成 (参照カウント: {self._reference_count})"
+                f"新しいWebDriverインスタンスを作成 (参照カウント: {self._reference_count})",
             )
             return self._driver
 
@@ -90,7 +86,7 @@ class WebDriverManager:
             if self._reference_count > 0:
                 self._reference_count -= 1
                 logger.info(
-                    f"WebDriver参照を解放 (参照カウント: {self._reference_count})"
+                    f"WebDriver参照を解放 (参照カウント: {self._reference_count})",
                 )
 
                 # 参照カウントが0になったらドライバーを終了
@@ -105,7 +101,7 @@ class WebDriverManager:
             self._cleanup_driver()
             logger.info("WebDriverを強制終了しました")
 
-    def _create_driver(self, headless: bool = False) -> webdriver.Chrome:
+    def _create_driver(self, headless: bool = False) -> webdriver.Chrome:  # noqa: FBT001, FBT002
         """新しいWebDriverインスタンスを作成"""
         chrome_options = Options()
 
@@ -135,9 +131,10 @@ class WebDriverManager:
             # その他オプション
             chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_experimental_option(
-                "excludeSwitches", ["enable-automation"]
+                "excludeSwitches",
+                ["enable-automation"],
             )
-            chrome_options.add_experimental_option("useAutomationExtension", False)
+            chrome_options.add_experimental_option("useAutomationExtension", False)  # noqa: FBT003
             chrome_options.add_argument("--disable-gpu")
 
             if PlatformUtils.get_platform() == Platform.MACOS:
@@ -152,9 +149,9 @@ class WebDriverManager:
             driver = webdriver.Chrome(service=service, options=chrome_options)
             if not headless:
                 driver.set_page_load_timeout(30)
-            return driver
-        except Exception as e:
-            logger.error(f"WebDriverの作成に失敗: {e}")
+            return driver  # noqa: TRY300
+        except Exception:
+            logger.exception("WebDriverの作成に失敗")
             raise
 
     def _get_chrome_pid(self) -> None:
@@ -168,16 +165,16 @@ class WebDriverManager:
                     if chrome_process_name.lower() in child.name().lower():
                         self._chrome_pid = child.pid
                         break
-        except Exception as e:
-            logger.error(f"Chrome PID取得エラー: {e}")
+        except Exception:
+            logger.exception("Chrome PID取得エラー")
 
     def _cleanup_driver(self) -> None:
         """WebDriverをクリーンアップ"""
         if self._driver:
             try:
                 self._driver.quit()
-            except Exception as e:
-                logger.error(f"WebDriver終了エラー: {e}")
+            except Exception:
+                logger.exception("WebDriver終了エラー")
             finally:
                 self._driver = None
                 self._chrome_pid = None
@@ -189,8 +186,8 @@ class WebDriverManager:
             return False
         try:
             _ = self._driver.current_url
-            return True
-        except Exception:
+            return True  # noqa: TRY300
+        except Exception:  # noqa: BLE001
             return False
 
     def get_chrome_pid(self) -> int | None:
@@ -203,7 +200,7 @@ webdriver_manager = WebDriverManager()
 
 
 # 後方互換性のためのエイリアス関数
-def get_webdriver(headless: bool = False) -> webdriver.Chrome:
+def get_webdriver(headless: bool = False) -> webdriver.Chrome:  # noqa: FBT001, FBT002
     """共有WebDriverインスタンスを取得"""
     return webdriver_manager.get_driver(headless=headless)
 

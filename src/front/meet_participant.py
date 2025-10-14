@@ -1,11 +1,10 @@
-"""
-Meet参加クラス（フロントPC用）
+"""Meet参加クラス（フロントPC用).
+
 受信したMeet URLに自動参加する
 """
 
 import logging
 import time
-from typing import Any
 from urllib.parse import urlparse
 
 from selenium import webdriver
@@ -15,7 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from ..config import Config
+from config import Config
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -29,8 +28,9 @@ class MeetParticipant:
     BUTTON_WAIT_TIMEOUT = 15
     POPUP_WAIT = 90
 
-    def __init__(self, display_name: str = "Reception"):
-        """
+    def __init__(self, display_name: str = "Reception") -> None:
+        """初期化.
+
         Args:
             display_name: 表示名
         """
@@ -64,7 +64,7 @@ class MeetParticipant:
         options.add_argument("--use-fake-ui-for-media-stream")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
+        options.add_experimental_option("useAutomationExtension", False)  # noqa: FBT003
         # 全画面モードで起動
         options.add_argument("--start-fullscreen")
 
@@ -74,9 +74,10 @@ class MeetParticipant:
         """Meet URLの妥当性を検証"""
         try:
             parsed = urlparse(url)
-            return parsed.netloc in ["meet.google.com"]
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
+        else:
+            return parsed.netloc in ["meet.google.com"]
 
     def join_meeting(self, meet_url: str) -> bool:
         """Meetに参加"""
@@ -97,8 +98,8 @@ class MeetParticipant:
             # フロントPCは常にゲストとして参加
             return self._join_as_guest()
 
-        except Exception as e:
-            logger.error(f"Meet参加エラー: {e}")
+        except Exception:
+            logger.exception("Meet参加エラー")
             return False
 
     def _join_as_guest(self) -> bool:
@@ -111,8 +112,8 @@ class MeetParticipant:
                 return False
             name_input = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
                 expected_conditions.presence_of_element_located(
-                    (By.XPATH, Config.GoogleMeet.NAME_INPUT_XPATH)
-                )
+                    (By.XPATH, Config.GoogleMeet.NAME_INPUT_XPATH),
+                ),
             )
             name_input.clear()
             name_input.send_keys(self.display_name)
@@ -121,18 +122,14 @@ class MeetParticipant:
             # 参加リクエスト
             join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
                 expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH)
-                )
+                    (By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH),
+                ),
             )
             join_button.click()
             logger.info("参加をリクエストしました")
-
-            # Geminiポップアップ処理
-            # self._handle_gemini_popup() # Ribura垢でない場合は表示されない
-            return True
-
-        except Exception as e:
-            logger.error(f"ゲスト参加エラー: {e}")
+            return True  # noqa: TRY300
+        except Exception:
+            logger.exception("ゲスト参加エラー")
             return False
 
     def _handle_gemini_popup(self) -> None:
@@ -145,13 +142,15 @@ class MeetParticipant:
             try:
                 # Gemini参加ボタンをチェック
                 gemini_join_button = self.driver.find_element(
-                    By.XPATH, Config.GoogleMeet.GEMINI_JOIN_BUTTON_XPATH
+                    By.XPATH,
+                    Config.GoogleMeet.GEMINI_JOIN_BUTTON_XPATH,
                 )
                 gemini_join_button.click()
                 logger.info("Geminiメモ作成確認を処理しました")
-                return
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
+            else:
+                return
 
             time.sleep(check_interval)
             elapsed_time += check_interval
@@ -164,18 +163,17 @@ class MeetParticipant:
 
             leave_button = WebDriverWait(self.driver, 5).until(
                 expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.LEAVE_BUTTON_XPATH)
-                )
+                    (By.XPATH, Config.GoogleMeet.LEAVE_BUTTON_XPATH),
+                ),
             )
             leave_button.click()
             logger.info("会議から退出しました")
-            return True
-
+            return True  # noqa: TRY300
         except TimeoutException:
             logger.warning("退出ボタンが見つかりませんでした")
             return False
-        except Exception as e:
-            logger.error(f"退出エラー: {e}")
+        except Exception:
+            logger.exception("退出エラー")
             return False
 
     def cleanup(self) -> None:
@@ -185,13 +183,18 @@ class MeetParticipant:
                 self.driver.quit()
                 self.driver = None
                 logger.info("ブラウザを終了しました")
-        except Exception as e:
-            logger.error(f"ブラウザ終了エラー: {e}")
+        except Exception:
+            logger.exception("ブラウザ終了エラー")
 
     def __enter__(self) -> "MeetParticipant":
         """コンテキストマネージャーのエントリ"""
         return self
 
-    def __exit__(self, _exc_type: Any, _exc_val: Any, _exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_val: BaseException | None,
+        _exc_tb: object,
+    ) -> None:
         """コンテキストマネージャーの終了処理"""
         self.cleanup()

@@ -1,5 +1,5 @@
-"""
-Google Meet管理クラス（リモートPC用）
+"""Google Meet管理クラス（リモートPC用).
+
 Meet URLの生成、ホストとしての参加、Auto-Admit機能の制御を行う
 """
 
@@ -8,20 +8,20 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import psutil
 from google.apps import meet_v2
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from ..config import Config
+from config import Config
+
 from .webdriver_manager import (
     cleanup_webdriver,
     get_webdriver,
@@ -30,6 +30,9 @@ from .webdriver_manager import (
     release_webdriver,
 )
 
+if TYPE_CHECKING:
+    from selenium import webdriver
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,12 +40,12 @@ class MeetManager:
     """Google Meet管理クラス（共有WebDriverを使用）"""
 
     # Google Meet API スコープ
-    SCOPES = ["https://www.googleapis.com/auth/meetings.space.created"]
+    SCOPES: ClassVar[list[str]] = ["https://www.googleapis.com/auth/meetings.space.created"]
 
     # 待機時間設定
     BUTTON_WAIT_TIMEOUT = 10
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.driver: webdriver.Chrome | None = None
         self.meet_url: str | None = None
         self.creds: Any = None
@@ -58,10 +61,9 @@ class MeetManager:
             client = meet_v2.SpacesServiceClient(credentials=self.creds)
             request = meet_v2.CreateSpaceRequest()
             response = client.create_space(request=request)
-            meet_url = response.meeting_uri
-            return meet_url
+            return response.meeting_uri  # noqa: TRY300
         except Exception:
-            logger.error("Meetスペースの作成に失敗しました")
+            logger.exception("Meetスペースの作成に失敗しました")
             raise
 
     def _authenticate(self) -> None:
@@ -78,35 +80,39 @@ class MeetManager:
                 creds.refresh(Request())
             else:
                 if not credentials_path.exists():
-                    raise FileNotFoundError(
+                    msg = (
                         "認証情報ファイル (credentials.json) が見つかりません。"
                         "Google Cloud Consoleからダウンロードしてください。"
                     )
+                    raise FileNotFoundError(
+                        msg,
+                    )
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    str(credentials_path), self.SCOPES
+                    str(credentials_path),
+                    self.SCOPES,
                 )
                 creds = flow.run_local_server(port=0)
 
-            with open(token_path, "w") as token:
+            with token_path.open("w") as token:
                 token.write(creds.to_json())
 
         self.creds = creds
 
     def setup_browser(self) -> None:
         """共有WebDriverインスタンスを取得してセットアップ"""
-
         try:
             # 共有WebDriverインスタンスを取得
             self.driver = get_webdriver(headless=False)
             logger.info("共有WebDriverインスタンスを取得しました")
-        except Exception as e:
-            logger.error(f"共有WebDriverの取得に失敗: {e}")
+        except Exception:
+            logger.exception("共有WebDriverの取得に失敗")
             raise
 
     def join_as_host(self, meet_url: str) -> None:
         """Meetにホストとして参加"""
         if not self.driver:
-            raise ValueError("ブラウザが初期化されていません")
+            msg = "ブラウザが初期化されていません"
+            raise ValueError(msg)
 
         self.driver.get(meet_url)
 
@@ -115,8 +121,8 @@ class MeetManager:
         try:
             join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
                 expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.JOIN_BUTTON_XPATH)
-                )
+                    (By.XPATH, Config.GoogleMeet.JOIN_BUTTON_XPATH),
+                ),
             )
         except TimeoutException:
             join_button = None
@@ -124,23 +130,26 @@ class MeetManager:
         if join_button:
             join_button.click()
         else:
-            raise TimeoutException("参加ボタンが見つかりませんでした")
+            msg = "参加ボタンが見つかりませんでした"
+            raise TimeoutException(msg)
 
     def enable_auto_admit(self) -> None:
         """Auto-Admit機能を有効化"""
         if not self.driver:
-            raise ValueError("ブラウザが初期化されていません")
+            msg = "ブラウザが初期化されていません"
+            raise ValueError(msg)
 
         logger.info("Auto-Admit機能を有効化中...")
 
         auto_admit_button = None
         try:
             auto_admit_button = WebDriverWait(
-                self.driver, self.BUTTON_WAIT_TIMEOUT
+                self.driver,
+                self.BUTTON_WAIT_TIMEOUT,
             ).until(
                 expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.AUTO_ADMIT_BUTTON_XPATH)
-                )
+                    (By.XPATH, Config.GoogleMeet.AUTO_ADMIT_BUTTON_XPATH),
+                ),
             )
         except TimeoutException:
             auto_admit_button = None
@@ -170,11 +179,11 @@ class MeetManager:
                 return False
 
             # ページが会議画面から外れていないかチェック（ホーム画面に戻る ってソースにあるか）
-            return Config.GoogleMeet.HOME_BUTTON_TEXT not in self.driver.page_source
-
-        except Exception:
+        except Exception:  # noqa: BLE001
             # ChromeDriverが終了している場合やその他のエラー
             return False
+        else:
+            return Config.GoogleMeet.HOME_BUTTON_TEXT not in self.driver.page_source
 
     def set_chrome_exit_callback(self, callback: Callable[[], None]) -> None:
         """Chrome終了時のコールバックを設定"""
@@ -182,11 +191,11 @@ class MeetManager:
 
     def start_process_monitoring(self) -> None:
         """Chromeプロセスの監視を開始"""
-
         if not self._monitoring:
             self._monitoring = True
             self._process_monitor_thread = threading.Thread(
-                target=self._monitor_chrome_process, daemon=True
+                target=self._monitor_chrome_process,
+                daemon=True,
             )
             self._process_monitor_thread.start()
             logger.info("Chromeプロセス監視を開始しました")
@@ -198,9 +207,8 @@ class MeetManager:
             self._process_monitor_thread.join(timeout=2)
         logger.info("Chromeプロセス監視を停止しました")
 
-    def _monitor_chrome_process(self) -> None:
+    def _monitor_chrome_process(self) -> None:  # noqa: C901
         """Chromeプロセスを監視"""
-
         while self._monitoring:
             try:
                 # 共有WebDriverの状態チェック
@@ -217,14 +225,14 @@ class MeetManager:
                         chrome_process = psutil.Process(chrome_pid)
                         if not chrome_process.is_running():
                             logger.info(
-                                f"Chromeプロセス (PID: {chrome_pid}) が終了しました"
+                                f"Chromeプロセス (PID: {chrome_pid}) が終了しました",
                             )
                             if self._on_chrome_exit_callback:
                                 self._on_chrome_exit_callback()
                             break
                     except psutil.NoSuchProcess:
                         logger.info(
-                            f"Chromeプロセス (PID: {chrome_pid}) が見つかりません"
+                            f"Chromeプロセス (PID: {chrome_pid}) が見つかりません",
                         )
                         if self._on_chrome_exit_callback:
                             self._on_chrome_exit_callback()
@@ -239,13 +247,12 @@ class MeetManager:
 
                 time.sleep(2)  # 2秒ごとにチェック
 
-            except Exception as e:
-                logger.error(f"プロセス監視エラー: {e}")
+            except Exception:
+                logger.exception("プロセス監視エラー")
                 time.sleep(5)
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""
-
         self.stop_process_monitoring()
         if self.driver:
             try:
@@ -253,8 +260,8 @@ class MeetManager:
                 release_webdriver()
                 self.driver = None
                 logger.info("MeetManagerのクリーンアップが完了しました")
-            except Exception as e:
-                logger.error(f"クリーンアップエラー: {e}")
+            except Exception:
+                logger.exception("クリーンアップエラー")
 
     @classmethod
     def cleanup_shared_driver(cls) -> None:

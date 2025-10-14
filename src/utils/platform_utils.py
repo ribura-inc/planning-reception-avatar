@@ -1,12 +1,10 @@
-"""
-プラットフォーム判定と OS 固有処理のユーティリティ
-"""
+"""プラットフォーム判定と OS 固有処理のユーティリティ"""
 
 import logging
 import platform as platform_module
 import subprocess
 
-from ..models.enums import Platform, ProcessName
+from models.enums import Platform, ProcessName
 
 logger = logging.getLogger(__name__)
 
@@ -28,28 +26,30 @@ class PlatformUtils:
         try:
             if current_platform == Platform.WINDOWS:
                 # Windowsではtasklistを使用
-                result = subprocess.run(
-                    ["tasklist", "/FI", f"IMAGENAME eq {process_name}*"],
+                result = subprocess.run(  # noqa: S603
+                    ["tasklist", "/FI", f"IMAGENAME eq {process_name}*"],  # noqa: S607
+                    check=False,
                     capture_output=True,
                     text=True,
                     timeout=5,
                 )
                 return process_name.lower() in result.stdout.lower()
-            else:
-                # macOS/Linuxではpgrepを使用
-                result = subprocess.run(
-                    ["pgrep", "-f", process_name],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                return result.returncode == 0
+            # macOS/Linuxではpgrepを使用
+            result = subprocess.run(  # noqa: S603
+                ["pgrep", "-f", process_name],  # noqa: S607
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
         except subprocess.TimeoutExpired:
-            logger.error(f"Timeout while checking process: {process_name}")
+            logger.exception(f"Timeout while checking process: {process_name}")
             return False
-        except Exception as e:
-            logger.error(f"Error checking process {process_name}: {e}")
+        except Exception:
+            logger.exception(f"Error checking process {process_name}")
             return False
+        else:
+            return result.returncode == 0
 
     @staticmethod
     def get_chrome_process_name() -> str:

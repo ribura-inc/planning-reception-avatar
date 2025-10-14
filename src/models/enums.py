@@ -1,8 +1,3 @@
-"""
-共通Enum定義
-文字列リテラルの曖昧性を排除し、型安全性を向上
-"""
-
 from enum import Enum
 
 
@@ -18,25 +13,10 @@ class Platform(str, Enum):
         system_lower = system.lower()
         if system_lower == "darwin":
             return cls.MACOS
-        elif system_lower == "windows":
+        if system_lower == "windows":
             return cls.WINDOWS
-        else:
-            raise ValueError(f"Unsupported platform: {system}")
-
-
-class ConnectionStatus(str, Enum):
-    """接続状態"""
-
-    # フロントPC用
-    WAITING = "待機中"
-    CONNECTING = "接続中"
-    CONNECTED = "接続済み"
-    DISCONNECTING = "切断中"
-    ERROR = "エラー"
-
-    # リモートPC用
-    NOT_CONNECTED = "未接続"
-    IN_SESSION = "セッション中"
+        msg = f"Unsupported platform: {system}"
+        raise ValueError(msg)
 
 
 class RemoteCommand(str, Enum):

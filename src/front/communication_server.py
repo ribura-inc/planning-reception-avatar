@@ -1,5 +1,5 @@
-"""
-通信サーバークラス（フロントPC用）
+"""通信サーバークラス（フロントPC用）
+
 Tailscaleを使用してリモートPCからのメッセージを受信して処理する
 """
 
@@ -9,10 +9,10 @@ import socket
 import struct
 import threading
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from ..utils.tailscale_utils import TailscaleUtils
+from utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 class CommunicationServer:
     """リモートPCからの通信を受信するサーバー"""
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 9999):
-        """
+    def __init__(self, host: str = "0.0.0.0", port: int = 9999) -> None:  # noqa: S104
+        """初期化.
+
         Args:
             host: バインドするホスト
             port: リスニングポート
@@ -40,12 +41,27 @@ class CommunicationServer:
         self.clients: set[tuple[socket.socket, tuple]] = set()
         self._clients_lock = threading.Lock()
 
+        # 接続イベントコールバック
+        self._on_client_connected: Callable[[tuple], None] | None = None
+        self._on_client_disconnected: Callable[[tuple], None] | None = None
+
     def register_handler(
-        self, message_type: str, handler: Callable[[dict[str, Any]], None]
+        self,
+        message_type: str,
+        handler: Callable[[dict[str, Any]], None],
     ) -> None:
         """メッセージタイプに対するハンドラーを登録"""
         self.message_handlers[message_type] = handler
         logger.info(f"ハンドラー登録: {message_type}")
+
+    def set_connection_callbacks(
+        self,
+        on_connected: Callable[[tuple], None] | None = None,
+        on_disconnected: Callable[[tuple], None] | None = None,
+    ) -> None:
+        """Set callbacks for client connection lifecycle."""
+        self._on_client_connected = on_connected
+        self._on_client_disconnected = on_disconnected
 
     def start_server(self) -> bool:
         """サーバーを開始"""
@@ -85,11 +101,9 @@ class CommunicationServer:
             # 別スレッドでサーバー実行
             self.server_thread = threading.Thread(target=self._run_server, daemon=True)
             self.server_thread.start()
-
-            return True
-
-        except Exception as e:
-            logger.error(f"サーバー開始エラー: {e}")
+            return True  # noqa: TRY300
+        except Exception:
+            logger.exception("サーバー開始エラー")
             return False
 
     def _run_server(self) -> None:
@@ -109,20 +123,28 @@ class CommunicationServer:
                 )
                 client_thread.start()
 
-            except Exception as e:
+            except Exception:
                 if self.running:
-                    logger.error(f"接続受付エラー: {e}")
+                    logger.exception("接続受付エラー")
 
-    def _handle_client(
-        self, client_socket: socket.socket, client_address: tuple
+    def _handle_client(  # noqa: C901, PLR0912, PLR0915
+        self,
+        client_socket: socket.socket,
+        client_address: tuple,
     ) -> None:
         """クライアント接続処理（長さプレフィックス対応）"""
         # クライアント接続をリストに追加
         with self._clients_lock:
             self.clients.add((client_socket, client_address))
         logger.info(
-            f"クライアント接続追加: {client_address} (総数: {len(self.clients)})"
+            f"クライアント接続追加: {client_address} (総数: {len(self.clients)})",
         )
+
+        if self._on_client_connected:
+            try:
+                self._on_client_connected(client_address)
+            except Exception:
+                logger.exception("接続コールバックエラー")
 
         try:
             client_socket.settimeout(30)  # 30秒タイムアウト
@@ -137,7 +159,7 @@ class CommunicationServer:
                     message_length = int.from_bytes(length_bytes, "big")
                     if message_length > 10 * 1024 * 1024:  # 10MB以上はエラー
                         logger.error(
-                            f"メッセージが大きすぎます: {message_length}バイト"
+                            f"メッセージが大きすぎます: {message_length}バイト",
                         )
                         break
 
@@ -148,7 +170,7 @@ class CommunicationServer:
 
                     message = message_bytes.decode("utf-8")
                     logger.info(
-                        f"メッセージ受信 from {client_address}: {message[:100]}..."
+                        f"メッセージ受信 from {client_address}: {message[:100]}...",
                     )
 
                     # JSONメッセージとして処理
@@ -159,7 +181,7 @@ class CommunicationServer:
                         # 受信確認を長さプレフィックス付きで送信
                         response_data = {
                             "status": "received",
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(UTC).isoformat(),
                             "message": "メッセージを受信しました",
                         }
                         response = json.dumps(response_data).encode("utf-8")
@@ -168,31 +190,36 @@ class CommunicationServer:
                         client_socket.sendall(len(response).to_bytes(4, "big"))
                         client_socket.sendall(response)
 
-                    except json.JSONDecodeError as e:
-                        logger.error(f"JSON解析失敗 from {client_address}: {e}")
-                        logger.error(f"受信メッセージ: {message[:200]}")
+                    except json.JSONDecodeError:
+                        logger.exception(f"JSON解析失敗 from {client_address}")
+                        logger.exception(f"受信メッセージ: {message[:200]}")
 
-                except UnicodeDecodeError as e:
-                    logger.error(f"メッセージデコードエラー from {client_address}: {e}")
+                except UnicodeDecodeError:
+                    logger.exception(f"メッセージデコードエラー from {client_address}")
                     break
                 except TimeoutError:
                     logger.warning(f"クライアントタイムアウト: {client_address}")
                     break
-                except struct.error as e:
-                    logger.error(f"メッセージ長解析エラー from {client_address}: {e}")
+                except struct.error:
+                    logger.exception(f"メッセージ長解析エラー from {client_address}")
                     break
 
         except ConnectionResetError:
             logger.info(f"クライアント切断: {client_address}")
-        except Exception as e:
-            logger.error(f"クライアント処理エラー from {client_address}: {e}")
+        except Exception:
+            logger.exception(f"クライアント処理エラー from {client_address}")
         finally:
             # クライアント接続をリストから削除
             with self._clients_lock:
                 self.clients.discard((client_socket, client_address))
             logger.info(
-                f"クライアント接続終了: {client_address} (残り: {len(self.clients)})"
+                f"クライアント接続終了: {client_address} (残り: {len(self.clients)})",
             )
+            if self._on_client_disconnected:
+                try:
+                    self._on_client_disconnected(client_address)
+                except Exception:
+                    logger.exception("切断コールバックエラー")
             client_socket.close()
 
     def _process_message(self, data: dict[str, Any]) -> None:
@@ -204,8 +231,8 @@ class CommunicationServer:
         if message_type in self.message_handlers:
             try:
                 self.message_handlers[message_type](data)
-            except Exception as e:
-                logger.error(f"ハンドラー実行エラー ({message_type}): {e}")
+            except Exception:
+                logger.exception(f"ハンドラー実行エラー ({message_type})")
         else:
             logger.warning(f"未知のメッセージタイプ: {message_type}")
             self._default_message_handler(data)
@@ -225,8 +252,8 @@ class CommunicationServer:
         if self.socket:
             try:
                 self.socket.close()
-            except Exception as e:
-                logger.error(f"ソケット終了エラー: {e}")
+            except Exception:
+                logger.exception("ソケット終了エラー")
 
         if self.server_thread and self.server_thread.is_alive():
             self.server_thread.join(timeout=5)
@@ -252,7 +279,12 @@ class CommunicationServer:
         self.start_server()
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         """コンテキストマネージャーの終了処理"""
         self.stop_server()
         # 未使用パラメータを明示的に無視

@@ -1,12 +1,12 @@
-"""
-Tailscale関連ユーティリティ
+"""Tailscale関連ユーティリティ.
+
 Tailscaleの設定確認とIPアドレス取得
 """
 
 import json
 import logging
-import os
 import subprocess
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +18,20 @@ class TailscaleUtils:
     def _get_tailscale_command() -> str:
         """適切なTailscaleコマンドパスを取得"""
         # macOSの場合、アプリケーション内のバイナリを確認
-        if os.path.exists("/Applications/Tailscale.app/Contents/MacOS/Tailscale"):
-            return "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
-        else:
-            # 他の環境では通常のコマンドを使用
-            return "tailscale"
+        tailscale_app_path = Path("/Applications/Tailscale.app/Contents/MacOS/Tailscale")
+        if tailscale_app_path.exists():
+            return str(tailscale_app_path)
+        # 他の環境では通常のコマンドを使用
+        return "tailscale"
 
     @staticmethod
     def _get_status_data() -> dict | None:
         """Tailscaleステータスを取得"""
         try:
             tailscale_cmd = TailscaleUtils._get_tailscale_command()
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603
                 [tailscale_cmd, "status", "--json"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -40,12 +41,16 @@ class TailscaleUtils:
                 logger.error(f"Tailscale status failed: {result.stderr}")
                 return None
 
-            status = json.loads(result.stdout)
-            return status
+            return json.loads(result.stdout)
 
-        except Exception as e:
-            logger.error(f"Error getting Tailscale status: {e}")
+        except Exception:
+            logger.exception("Error getting Tailscale status")
             return None
+
+    @staticmethod
+    def get_status_snapshot() -> dict | None:
+        """Public helper to retrieve the raw status payload."""
+        return TailscaleUtils._get_status_data()
 
     @staticmethod
     def check_tailscale_status() -> bool:
@@ -68,12 +73,11 @@ class TailscaleUtils:
                 return False
 
             logger.info(
-                f"Tailscale is running. Device: {self_info.get('HostName', 'unknown')}"
+                f"Tailscale is running. Device: {self_info.get('HostName', 'unknown')}",
             )
-            return True
-
-        except Exception as e:
-            logger.error(f"Unexpected error checking Tailscale status: {e}")
+            return True  # noqa: TRY300
+        except Exception:
+            logger.exception("Unexpected error checking Tailscale status")
             return False
 
     @staticmethod
@@ -81,20 +85,23 @@ class TailscaleUtils:
         """自分のTailscale IPアドレスを取得"""
         try:
             tailscale_cmd = TailscaleUtils._get_tailscale_command()
-            result = subprocess.run(
-                [tailscale_cmd, "ip", "-4"], capture_output=True, text=True, timeout=10
+            result = subprocess.run(  # noqa: S603
+                [tailscale_cmd, "ip", "-4"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
 
             if result.returncode == 0:
                 ip = result.stdout.strip()
                 logger.info(f"My Tailscale IP: {ip}")
-                return ip
             else:
                 logger.error(f"Failed to get Tailscale IP: {result.stderr}")
                 return None
-
-        except Exception as e:
-            logger.error(f"Error getting Tailscale IP: {e}")
+            return ip  # noqa: TRY300
+        except Exception:
+            logger.exception("Error getting Tailscale IP")
             return None
 
     @staticmethod
@@ -123,11 +130,11 @@ class TailscaleUtils:
                     devices[hostname] = tailscale_ips[0]
 
             logger.info(f"Found {len(devices)} Tailscale devices")
-            return devices
-
-        except Exception as e:
-            logger.error(f"Error getting Tailscale devices: {e}")
+        except Exception:
+            logger.exception("Error getting Tailscale devices")
             return {}
+        else:
+            return devices
 
     @staticmethod
     def resolve_device_name(device_name: str) -> str | None:
@@ -148,11 +155,10 @@ class TailscaleUtils:
         return None
 
     @staticmethod
-    def check_and_setup_tailscale(
+    def check_and_setup_tailscale(  # noqa: PLR0911
         required_device: str | None = None,
     ) -> tuple[bool, str]:
-        """
-        Tailscaleの設定を確認し、必要に応じてエラーメッセージを返す
+        """Tailscaleの設定を確認し、必要に応じてエラーメッセージを返す
 
         Args:
             required_device: 必要なデバイス名（省略可能）
@@ -165,8 +171,11 @@ class TailscaleUtils:
             tailscale_cmd = TailscaleUtils._get_tailscale_command()
 
             try:
-                subprocess.run(
-                    [tailscale_cmd, "--version"], capture_output=True, timeout=3
+                subprocess.run(  # noqa: S603
+                    [tailscale_cmd, "--version"],
+                    check=False,
+                    capture_output=True,
+                    timeout=3,
                 )
             except FileNotFoundError:
                 return False, "Tailscaleがインストールされていません"
@@ -205,5 +214,6 @@ class TailscaleUtils:
                 f"Tailscaleセットアップ完了 (IP: {my_ip}, デバイス数: {len(devices)})",
             )
 
-        except Exception as e:
-            return False, f"Tailscale検証中にエラーが発生しました: {e}"
+        except Exception:
+            logger.exception("Tailscale検証中にエラーが発生しました")
+            return False, "Tailscale検証中にエラーが発生しました"
