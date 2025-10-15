@@ -171,13 +171,12 @@ class RemoteController:
     # 内部ヘルパー
     # ------------------------------------------------------------
     def _handle_chrome_exit(self) -> None:
-        self._emit_status(AppStatus.ERROR, "Chromeが終了しました")
-        self._notifier.report_error(
-            RuntimeError("Chrome terminated"),
-            "Chrome監視",
-            {"接続先": self._current_device, "Meet URL": self._current_meet_url},
-        )
+        """Chrome終了時の処理（正常終了として扱う）"""
+        self._emit_status(AppStatus.DISCONNECTING, "Chromeを終了しました")
+        if self._current_device:
+            self._notifier.disconnect_complete(self._current_device)
         self._teardown_session()
+        self._emit_status(AppStatus.IDLE, "待機中")
 
     def _teardown_session(self) -> None:
         with self._session_lock:

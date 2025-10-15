@@ -43,7 +43,7 @@ class FrontNotifier(BaseNotifier):
         details = {}
         if meet_url:
             details["Meet URL"] = meet_url
-        self._usage("リモート接続完了", details)
+        self._usage("接続完了", details)
 
 
 class RemoteNotifier(BaseNotifier):
