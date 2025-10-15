@@ -9,6 +9,7 @@ import threading
 import time
 from pathlib import Path
 
+from src.config import Config
 from src.models.enums import Platform
 
 from .platform_utils import PlatformUtils
@@ -47,7 +48,7 @@ def _launch_vtube_studio() -> bool:
         logger.info(f"Successfully launched: {vtube_path}")
 
         # 起動まで少し待機
-        time.sleep(3)
+        time.sleep(Config.VTubeStudio.LAUNCH_WAIT)
         return _check_vtube_studio_running()
 
     except Exception as e:
@@ -70,7 +71,7 @@ def check_and_setup_vtube_studio() -> tuple[bool, str]:
     if _launch_vtube_studio():
         # 起動後の確認（最大10秒待機）
         for _i in range(10):
-            time.sleep(1)
+            time.sleep(Config.VTubeStudio.STATUS_CHECK_INTERVAL)
             if _check_vtube_studio_running():
                 return True, "VTube Studio launched successfully"
 

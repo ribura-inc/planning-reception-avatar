@@ -245,11 +245,11 @@ class MeetManager:
                         self._on_chrome_exit_callback()
                     break
 
-                time.sleep(2)  # 2秒ごとにチェック
+                time.sleep(Config.GoogleMeet.PROCESS_MONITOR_INTERVAL)  # プロセス監視間隔
 
             except Exception:
                 logger.exception("プロセス監視エラー")
-                time.sleep(5)
+                time.sleep(Config.GoogleMeet.PROCESS_MONITOR_ERROR_WAIT)
 
     def cleanup(self) -> None:
         """リソースのクリーンアップ"""

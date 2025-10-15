@@ -26,6 +26,18 @@ class Config:
             ".//span[contains(text(), '閉じる') or contains(text(), 'Close')]]"
         )
 
+        # 待機時間設定（秒）
+        PAGE_LOAD_WAIT: float = 1.5  # ページ読み込み待機時間
+        SECURITY_DIALOG_WAIT: float = 2.0  # セキュリティダイアログ表示待機時間
+        JOIN_COMPLETE_WAIT: float = 1.5  # Meet参加完了後の待機時間（＝auto admit有効化待機時間）
+        PROCESS_MONITOR_INTERVAL: float = 2.0  # プロセス監視間隔
+        PROCESS_MONITOR_ERROR_WAIT: float = 5.0  # プロセス監視エラー時の待機時間
+        GEMINI_POPUP_CHECK_INTERVAL: float = 0.5  # Geminiポップアップチェック間隔
+
+        # タイムアウト設定（秒）
+        BUTTON_WAIT_TIMEOUT: int = 15  # ボタン検出のタイムアウト
+        GEMINI_POPUP_WAIT: int = 90  # Geminiポップアップ最大待機時間
+
         # ナビゲーション関連テキスト
         HOME_BUTTON_TEXT: str = "ホーム画面に戻る"
 
@@ -37,6 +49,13 @@ class Config:
             "//span[contains(text(), 'Chrome から削除') or contains(text(), 'Remove from Chrome')]/.."
         )
         ADD_BUTTON_XPATH: str = "//span[contains(text(), 'Chrome に追加') or contains(text(), 'Add to Chrome')]/.."
+
+    class VTubeStudio:
+        """VTube Studio関連の設定"""
+
+        # 待機時間設定（秒）
+        LAUNCH_WAIT: float = 3.0  # VTube Studio起動後の待機時間
+        STATUS_CHECK_INTERVAL: float = 1.0  # ステータスチェック間隔
 
     CONFIG_DIR: Path = Path.home() / ".planning-reception-avatar"
 

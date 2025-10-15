@@ -7,6 +7,7 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
+from src.config import Config
 from src.models.enums import RemoteCommand
 from src.models.state import AppStatus, StatusMessage
 from src.remote.communication_client import CommunicationClient
@@ -128,7 +129,7 @@ class RemoteController:
 
             self._emit_status(AppStatus.CONNECTING, "Meetに参加しています")
             meet_manager.join_as_host(meet_url)
-            time.sleep(1.5)
+            time.sleep(Config.GoogleMeet.JOIN_COMPLETE_WAIT)
             meet_manager.enable_auto_admit()
             meet_manager.start_process_monitoring()
 

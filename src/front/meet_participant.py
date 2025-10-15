@@ -23,11 +23,6 @@ logger = logging.getLogger(__name__)
 class MeetParticipant:
     """Google Meet参加管理クラス"""
 
-    # 待機時間設定（最適化済み）
-    PAGE_LOAD_WAIT = 1.5
-    BUTTON_WAIT_TIMEOUT = 15
-    POPUP_WAIT = 90
-
     def __init__(self, display_name: str = "Reception") -> None:
         """初期化.
 
@@ -93,14 +88,14 @@ class MeetParticipant:
                 self.setup_browser()
 
             self.driver.get(meet_url)
-            time.sleep(self.PAGE_LOAD_WAIT)
+            time.sleep(Config.GoogleMeet.PAGE_LOAD_WAIT)
 
             # フロントPCは常にゲストとして参加
             if not self._join_as_guest():
                 return False
 
             # 入室後、セキュリティ確認ダイアログを閉じる
-            time.sleep(2)  # ダイアログ表示を待つ
+            time.sleep(Config.GoogleMeet.SECURITY_DIALOG_WAIT)  # ダイアログ表示を待つ
             self._close_security_dialog()
 
         except Exception:
@@ -117,7 +112,7 @@ class MeetParticipant:
             # 名前入力
             if not self.driver:
                 return False
-            name_input = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
+            name_input = WebDriverWait(self.driver, Config.GoogleMeet.BUTTON_WAIT_TIMEOUT).until(
                 expected_conditions.presence_of_element_located(
                     (By.XPATH, Config.GoogleMeet.NAME_INPUT_XPATH),
                 ),
@@ -127,7 +122,7 @@ class MeetParticipant:
             logger.info(f"表示名を入力: {self.display_name}")
 
             # 参加リクエスト
-            join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
+            join_button = WebDriverWait(self.driver, Config.GoogleMeet.BUTTON_WAIT_TIMEOUT).until(
                 expected_conditions.element_to_be_clickable(
                     (By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH),
                 ),
@@ -161,8 +156,8 @@ class MeetParticipant:
 
     def _handle_gemini_popup(self) -> None:
         """Geminiメモ作成ポップアップの処理（改良版）"""
-        max_wait_time = self.POPUP_WAIT
-        check_interval = 0.5
+        max_wait_time = Config.GoogleMeet.GEMINI_POPUP_WAIT
+        check_interval = Config.GoogleMeet.GEMINI_POPUP_CHECK_INTERVAL
         elapsed_time = 0
 
         while elapsed_time < max_wait_time:
