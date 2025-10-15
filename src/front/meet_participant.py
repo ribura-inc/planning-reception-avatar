@@ -96,11 +96,18 @@ class MeetParticipant:
             time.sleep(self.PAGE_LOAD_WAIT)
 
             # フロントPCは常にゲストとして参加
-            return self._join_as_guest()
+            if not self._join_as_guest():
+                return False
+
+            # 入室後、セキュリティ確認ダイアログを閉じる
+            time.sleep(2)  # ダイアログ表示を待つ
+            self._close_security_dialog()
 
         except Exception:
             logger.exception("Meet参加エラー")
             return False
+        else:
+            return True
 
     def _join_as_guest(self) -> bool:
         """ゲストとして参加"""
@@ -131,6 +138,26 @@ class MeetParticipant:
         except Exception:
             logger.exception("ゲスト参加エラー")
             return False
+
+    def _close_security_dialog(self) -> None:
+        """入室後のセキュリティ確認ダイアログを閉じる"""
+        if not self.driver:
+            return
+
+        logger.info("セキュリティ確認ダイアログの検出を試みています...")
+
+        try:
+            close_button = WebDriverWait(self.driver, 5).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, Config.GoogleMeet.SECURITY_DIALOG_CLOSE_BUTTON_XPATH),
+                ),
+            )
+            close_button.click()
+            logger.info("セキュリティ確認ダイアログを閉じました")
+        except TimeoutException:
+            logger.info("セキュリティ確認ダイアログは表示されていません")
+        except Exception:
+            logger.exception("セキュリティ確認ダイアログのクローズ中にエラーが発生しました")
 
     def _handle_gemini_popup(self) -> None:
         """Geminiメモ作成ポップアップの処理（改良版）"""

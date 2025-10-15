@@ -21,6 +21,10 @@ class Config:
         GEMINI_JOIN_BUTTON_XPATH: str = "//span[contains(text(), '今すぐ参加') or contains(text(), 'Join now')]/.."
         LEAVE_BUTTON_XPATH: str = "//button[@aria-label='通話から退出' or @aria-label='Leave call']"
         AUTO_ADMIT_BUTTON_XPATH: str = "//button[@aria-label='Toggle Auto-Admit']"
+        SECURITY_DIALOG_CLOSE_BUTTON_XPATH: str = (
+            "//button[contains(@class, 'UywwFc-LgbsSe') and "
+            ".//span[contains(text(), '閉じる') or contains(text(), 'Close')]]"
+        )
 
         # ナビゲーション関連テキスト
         HOME_BUTTON_TEXT: str = "ホーム画面に戻る"
