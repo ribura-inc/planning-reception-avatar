@@ -176,9 +176,8 @@ class CommunicationServer:
                     # JSONメッセージとして処理
                     try:
                         json_data = json.loads(message)
-                        self._process_message(json_data)
 
-                        # 受信確認を長さプレフィックス付きで送信
+                        # 先に受信確認を送信（ハンドラーがブロックしても問題ない）
                         response_data = {
                             "status": "received",
                             "timestamp": datetime.now(UTC).isoformat(),
@@ -189,6 +188,14 @@ class CommunicationServer:
                         # 長さプレフィックス付きで送信
                         client_socket.sendall(len(response).to_bytes(4, "big"))
                         client_socket.sendall(response)
+                        logger.info(f"応答送信完了 to {client_address}")
+
+                        # メッセージ処理を別スレッドで実行（ノンブロッキング）
+                        threading.Thread(
+                            target=self._process_message,
+                            args=(json_data,),
+                            daemon=True,
+                        ).start()
 
                     except json.JSONDecodeError:
                         logger.exception(f"JSON解析失敗 from {client_address}")
