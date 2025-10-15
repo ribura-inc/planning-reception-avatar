@@ -61,17 +61,6 @@ unfixable = []
 [tool.ruff.lint.pylint]
 max-args = 8 # 引数の許容上限
 
-[tool.ruff.lint.per-file-ignores]
-"**/tests/**" = [
-    "S101",    # テストファイルではassertの使用を許可
-    "ANN201",  # テスト関数の戻り値アノテーションは不要
-    "ANN202",  # プライベート関数の戻り値アノテーションは不要
-    "PLR2004", # マジックナンバー（HTTPステータスコード等）の使用を許可
-]
-"app/models/*" = [
-    "ERA001", # 一時的に許可する（PoC段階はミニマムなモデルにするため一部をコメントアウトしたい）
-]
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
