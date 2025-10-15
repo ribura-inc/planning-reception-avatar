@@ -147,9 +147,9 @@ class RemoteUI:
         header = ft.Text("リモート接続コントローラ", size=24, weight=ft.FontWeight.BOLD)
 
         self.status_label = ft.Text("状態: 待機中", size=20, weight=ft.FontWeight.W_600)
-        self.detail_label = ft.Text("", size=14, color=ft.colors.GREY)
+        self.detail_label = ft.Text("", size=14, color=ft.Colors.GREY)
         self.network_label = ft.Text("ネットワーク状態を確認しています...", size=12)
-        self.error_label = ft.Text("", size=12, color=ft.colors.RED)
+        self.error_label = ft.Text("", size=12, color=ft.Colors.RED)
         self.error_label.visible = False
 
         self.device_dropdown = ft.Dropdown(
@@ -160,21 +160,21 @@ class RemoteUI:
         )
 
         refresh_button = ft.IconButton(
-            icon=ft.icons.REFRESH,
+            icon=ft.Icons.REFRESH,
             tooltip="接続先を再取得",
             on_click=self._handle_refresh,
         )
 
         self.connect_button = ft.FilledButton(
             text="接続を開始",
-            icon=ft.icons.PLAY_ARROW,
+            icon=ft.Icons.PLAY_ARROW,
             disabled=True,
             on_click=self._handle_connect,
         )
 
         self.disconnect_button = ft.OutlinedButton(
             text="セッション終了",
-            icon=ft.icons.STOP_CIRCLE,
+            icon=ft.Icons.STOP_CIRCLE,
             disabled=True,
             on_click=self._handle_disconnect,
         )
@@ -192,7 +192,7 @@ class RemoteUI:
                     ft.Row([self.device_dropdown, refresh_button], alignment=ft.MainAxisAlignment.START),
                     ft.Row([self.connect_button, self.disconnect_button], spacing=16),
                     self.error_label,
-                    ft.Text("接続中はChromeブラウザが自動で起動します", size=12, color=ft.colors.GREY),
+                    ft.Text("接続中はChromeブラウザが自動で起動します", size=12, color=ft.Colors.GREY),
                 ],
                 spacing=18,
             ),

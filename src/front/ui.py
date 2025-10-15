@@ -44,11 +44,11 @@ class FrontUI:
         if self.detail_label:
             self.detail_label.value = payload.detail or ""
         if payload.status == AppStatus.ERROR:
-            self.status_label.color = ft.colors.RED
+            self.status_label.color = ft.Colors.RED
         elif payload.status == AppStatus.CONNECTED:
-            self.status_label.color = ft.colors.GREEN
+            self.status_label.color = ft.Colors.GREEN
         else:
-            self.status_label.color = ft.colors.BLACK
+            self.status_label.color = ft.Colors.BLACK
         self.page.update()
 
     def show_network_message(self, message: str) -> None:
@@ -81,20 +81,20 @@ class FrontUI:
         header = ft.Text("受付ステータス", size=26, weight=ft.FontWeight.BOLD)
 
         self.status_label = ft.Text("待機中", size=22, weight=ft.FontWeight.W_600)
-        self.detail_label = ft.Text("リモートPCからの接続を待っています", size=14, color=ft.colors.GREY)
+        self.detail_label = ft.Text("リモートPCからの接続を待っています", size=14, color=ft.Colors.GREY)
         self.network_label = ft.Text("ネットワークを確認しています...", size=12)
-        self.error_label = ft.Text("", size=12, color=ft.colors.RED)
+        self.error_label = ft.Text("", size=12, color=ft.Colors.RED)
         self.error_label.visible = False
 
         instructions = ft.Text(
             "オペレーターの指示があるまで、この画面をそのままにしてください。",
             size=12,
-            color=ft.colors.BLUE_GREY,
+            color=ft.Colors.BLUE_GREY,
         )
 
         refresh_btn = ft.FilledButton(
             text="ネットワークを再確認",
-            icon=ft.icons.REFRESH,
+            icon=ft.Icons.REFRESH,
             on_click=self._handle_refresh,
         )
 

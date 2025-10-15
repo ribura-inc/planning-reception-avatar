@@ -5,49 +5,19 @@ description = ""
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "celery[redis]>=5.3.0",
-    "redis>=5.0.0",
-    "google-api-python-client>=2.100.0",
     "google-auth>=2.23.0",
-    "google-auth-httplib2>=0.2.0",
     "google-auth-oauthlib>=1.2.2",
-    "websockets>=12.0",
-    "obsws-python>=1.6.0",
-    "pydantic>=2.5.0",
-    "pydantic-settings>=2.1.0",
-    "sqlalchemy>=2.0.0",
-    "httpx>=0.25.0",
     "python-dotenv>=1.1.1",
-    "tenacity>=8.2.0",
-    "structlog>=23.2.0",
-    "aiofiles>=23.2.0",
-    "python-multipart>=0.0.6",
-    "click>=8.1.0",
     "google-apps-meet>=0.1.16",
     "selenium>=4.33.0",
-    "pyautogui>=0.9.54",
     "psutil>=5.9.0",
     "flet[all]>=0.28.3",
+    "requests>=2.31.0",
 ]
 
 [tool.uv]
 [dependency-groups]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.12.0",
-    "freezegun>=1.2.0",
-    "ruff>=0.1.0",
-    "pyright>=1.1.0",
-    "coverage[toml]>=7.3.0",
-    "pre-commit>=3.5.0",
-    "ipython>=8.17.0",
-    "rich>=13.7.0",
-    "pyinstaller>=6.0.0",
-]
+dev = []
 
 [build-system]
 requires = ["hatchling"]
