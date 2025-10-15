@@ -136,7 +136,6 @@ class RemoteController:
             self._meet_manager = meet_manager
 
             self._emit_status(AppStatus.CONNECTED, "接続しました", f"Meet URL: {meet_url}")
-            self._notifier.connection_ready(device_name, meet_url)
 
         except Exception as exc:  # noqa: BLE001
             self._notifier.report_error(exc, "リモート接続開始", {"接続先": device_name})

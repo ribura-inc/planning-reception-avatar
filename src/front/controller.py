@@ -185,6 +185,9 @@ class FrontController:
             if self._current_remote_label:
                 detail = f"接続端末: {self._current_remote_label}"
             self._emit_status(AppStatus.CONNECTED, "接続中", detail)
+            # 入室完了をSlack通知
+            if self._current_remote_label and meet_url:
+                self._notifier.room_entry_complete(meet_url)
         except Exception as exc:  # noqa: BLE001
             self._notifier.report_error(exc, "フロントMeet参加", {"Meet URL": meet_url})
             self._emit_status(AppStatus.ERROR, "Meetへの参加に失敗しました")

@@ -23,9 +23,6 @@ class RemoteCommand(str, Enum):
     """リモート通信コマンド"""
 
     END_SESSION = "end_session"
-    LEAVE_MEETING = "leave_meeting"
-    JOIN_MEETING = "join_meeting"
-    FORCE_CLEANUP = "force_cleanup"
 
 
 class MessageType(str, Enum):
@@ -33,7 +30,6 @@ class MessageType(str, Enum):
 
     MEET_URL = "meet_url"
     COMMAND = "command"
-    NOTIFICATION = "notification"
     HEARTBEAT = "heartbeat"
 
 

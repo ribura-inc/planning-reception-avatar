@@ -33,18 +33,24 @@ class FrontNotifier(BaseNotifier):
     def report_error(self, error: Exception, context: str, detail: dict[str, Any] | None = None) -> None:
         self._error(error, context=context, detail=detail)
 
+    def room_entry_complete(self, meet_url: str) -> None:
+        """入室完了通知を送信
+
+        Args:
+            remote_device: リモートデバイス名
+            meet_url: Meet URL
+        """
+        details = {}
+        if meet_url:
+            details["Meet URL"] = meet_url
+        self._usage("リモート接続完了", details)
+
 
 class RemoteNotifier(BaseNotifier):
     """リモートアプリ専用の通知フロー。"""
 
     def app_started(self) -> None:
         self._usage("リモートアプリ起動", {})
-
-    def connection_ready(self, front_device: str, meet_url: str | None = None) -> None:
-        details = {"接続先": front_device}
-        if meet_url:
-            details["Meet URL"] = meet_url
-        self._usage("リモート接続完了", details)
 
     def disconnect_complete(self, front_device: str) -> None:
         self._usage("リモート切断完了", {"接続先": front_device})
