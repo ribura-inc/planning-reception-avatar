@@ -59,6 +59,15 @@ class RemoteUI:
         if self.detail_label:
             self.detail_label.value = payload.detail or ""
 
+        # ステータスに応じた色付け
+        if payload.status == AppStatus.ERROR:
+            self.status_label.color = ft.Colors.RED
+        elif payload.status == AppStatus.CONNECTED:
+            self.status_label.color = ft.Colors.GREEN
+        else:
+            self.status_label.color = ft.Colors.BLACK
+
+        # ボタンの有効/無効制御
         if payload.status in {AppStatus.CONNECTING, AppStatus.DISCONNECTING}:
             if self.connect_button:
                 self.connect_button.disabled = True
