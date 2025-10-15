@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from src.models.enums import MessageType
 from src.utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
@@ -232,6 +233,12 @@ class CommunicationServer:
     def _process_message(self, data: dict[str, Any]) -> None:
         """受信メッセージを処理"""
         message_type = data.get("type", "unknown")
+
+        # ハートビートメッセージは処理不要（ログのみ）
+        if message_type == MessageType.HEARTBEAT.value:
+            logger.debug("ハートビート受信")
+            return
+
         logger.info(f"メッセージ処理: {message_type}")
 
         # 登録されたハンドラーで処理
