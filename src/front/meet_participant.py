@@ -14,7 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from config import Config
+from src.config import Config
 
 # ロギング設定
 logger = logging.getLogger(__name__)

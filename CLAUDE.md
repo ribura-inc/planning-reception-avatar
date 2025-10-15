@@ -28,14 +28,16 @@
 
 ### 2. 実装
 
-@src/README.md を参照すること。
+- 実装は `src/` ディレクトリ配下で行う
+- すべてのインポートは `from src.xxx` の形式で記述
+- プロジェクトルートから `uv run python -m src.xxx.main` で実行
 
 ### 3. 品質保証（必須）
 
 - 全実装後に必ず実行：
 
 ```bash
-# コード品質チェック
+# コード品質チェック（プロジェクトルートで実行）
 uvx ruff check . --fix
 uvx ruff format .
 ```

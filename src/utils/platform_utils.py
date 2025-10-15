@@ -4,7 +4,7 @@ import logging
 import platform as platform_module
 import subprocess
 
-from models.enums import Platform, ProcessName
+from src.models.enums import Platform, ProcessName
 
 logger = logging.getLogger(__name__)
 

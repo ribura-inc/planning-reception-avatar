@@ -9,7 +9,7 @@ import threading
 import time
 from pathlib import Path
 
-from models.enums import Platform
+from src.models.enums import Platform
 
 from .platform_utils import PlatformUtils
 from .slack import SessionLocation, notify_error

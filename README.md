@@ -73,8 +73,78 @@ TODO
 tailscale status
 ```
 
-### 5. VTube Studioのインストール
+### 5. uvのセットアップ
+
+本リポジトリでは、Pythonのパッケージ管理ツールとして `uv` を採用します。
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 6. 依存関係のインストール
+
+プロジェクトルートで実行：
+
+```sh
+uv sync
+```
+
+### 7. 環境変数設定
+
+プロジェクトルートで実行：
+
+```sh
+cp .env.example .env
+```
+
+### 8. VTube Studioのインストール
 
 - VTube Studioをインストールしてください。
 - バーチャルWEBカメラ機能を用いて、VTube Studioのアバター画面をカメラとして用います。
   - MacではVTube Studioのバーチャルカメラが利用できない → 素のカメラで動作確認
+
+## 🔧 技術スタック
+
+### コア
+
+- **Python**: 3.13+
+- **VTube Studio**: アバター制御
+- **GCP**: Meet API
+
+### 開発ツール
+
+- **uv**: パッケージ管理
+- **Ruff**: Lint・フォーマット
+
+## 🧑‍💻 実行方法
+
+プロジェクトルートから実行してください。
+
+### 1. フロントPC側（先に起動）
+
+```bash
+uv run python -m src.front.main
+```
+
+### 2. リモートPC側（後に起動）
+
+```bash
+uv run python -m src.remote.main
+```
+
+## 🛠️ 開発コマンド
+
+### コード品質
+
+プロジェクトルートで実行：
+
+```sh
+# Lint チェック
+uvx ruff check .
+
+# フォーマット
+uvx ruff format .
+
+# 自動修正
+uvx ruff check . --fix
+```

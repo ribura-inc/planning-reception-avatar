@@ -6,6 +6,7 @@ import threading
 from typing import TYPE_CHECKING
 
 import flet as ft
+
 from src.models.state import AppStatus, StatusMessage
 
 if TYPE_CHECKING:

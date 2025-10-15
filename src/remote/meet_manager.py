@@ -20,7 +20,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from config import Config
+from src.config import Config
 
 from .webdriver_manager import (
     cleanup_webdriver,

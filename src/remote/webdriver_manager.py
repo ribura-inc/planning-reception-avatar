@@ -11,6 +11,7 @@ import psutil
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+
 from src.config import Config
 from src.models.enums import Platform
 from src.utils.platform_utils import PlatformUtils

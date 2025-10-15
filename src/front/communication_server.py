@@ -12,7 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from utils.tailscale_utils import TailscaleUtils
+from src.utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
 logger = logging.getLogger(__name__)

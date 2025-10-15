@@ -5,8 +5,8 @@
     "**/.ruff_cache": true,
     "**/.venv": true
   },
-  "python.defaultInterpreterPath": "src/.venv/bin/python",
-  "ruff.configuration": "src/pyproject.toml",
+  "python.defaultInterpreterPath": ".venv/bin/python",
+  "ruff.configuration": "pyproject.toml",
   "ruff.path": [
     "uvx ruff"
   ],
