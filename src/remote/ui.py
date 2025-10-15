@@ -55,7 +55,7 @@ class RemoteUI:
     def update_status(self, payload: StatusMessage) -> None:  # noqa: C901, PLR0912
         if not self.status_label or not self.page:
             return
-        self.status_label.value = f"状態: {payload.status.value}"
+        self.status_label.value = payload.headline if payload.headline else payload.status.value
         if self.detail_label:
             self.detail_label.value = payload.detail or ""
 
