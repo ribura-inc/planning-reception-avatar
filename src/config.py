@@ -28,7 +28,7 @@ class Config:
 
         # 待機時間設定（秒）
         PAGE_LOAD_WAIT: float = 1.5  # ページ読み込み待機時間
-        SECURITY_DIALOG_WAIT: float = 2.0  # セキュリティダイアログ表示待機時間
+        SECURITY_DIALOG_WAIT: float = 10.0  # セキュリティダイアログ表示待機時間
         JOIN_COMPLETE_WAIT: float = 1.5  # Meet参加完了後の待機時間（＝auto admit有効化待機時間）
         PROCESS_MONITOR_INTERVAL: float = 2.0  # プロセス監視間隔
         PROCESS_MONITOR_ERROR_WAIT: float = 5.0  # プロセス監視エラー時の待機時間
