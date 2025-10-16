@@ -73,8 +73,8 @@ class FrontUI:
     def _main(self, page: ft.Page) -> None:
         self.page = page
         page.title = "VTuber Reception - Front"
-        page.window.width = 520
-        page.window.height = 360
+        page.window.width = 800
+        page.window.height = 600
         page.padding = 24
         page.theme_mode = ft.ThemeMode.LIGHT
 

@@ -148,8 +148,8 @@ class RemoteUI:
     def _main(self, page: ft.Page) -> None:
         self.page = page
         page.title = "VTuber Reception - Remote"
-        page.window.width = 520
-        page.window.height = 420
+        page.window.width = 800
+        page.window.height = 600
         page.padding = 24
         page.theme_mode = ft.ThemeMode.LIGHT
 
