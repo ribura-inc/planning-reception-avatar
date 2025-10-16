@@ -90,7 +90,13 @@ class FrontController:
             self._emit_error("")
             self._ensure_server()
         else:
-            self._emit_error(result.message)
+            self._emit_error(
+                f"{result.message}\n\n"
+                "以下をご確認ください：\n"
+                "• Windows立ち上げ直後はTailscaleアプリが未起動の可能性があります。しばらくしてから接続先更新ボタンを押してみてください。\n"  # noqa: E501
+                "• インターネット接続は正常ですか？\n\n"
+                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
+            )
             self._emit_status(AppStatus.ERROR, "ネットワークを確認してください")
 
     def retry_network(self) -> None:
@@ -100,7 +106,13 @@ class FrontController:
             self._emit_error("")
             self._ensure_server()
         else:
-            self._emit_error(result.message)
+            self._emit_error(
+                f"{result.message}\n\n"
+                "以下をご確認ください：\n"
+                "• Tailscaleアプリは起動していますか？\n"
+                "• インターネット接続は正常ですか？\n\n"
+                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
+            )
             self._emit_status(AppStatus.ERROR, "ネットワークを確認してください")
 
     def shutdown(self) -> None:
@@ -127,7 +139,13 @@ class FrontController:
                 "フロントサーバー起動",
                 {"ホスト": self._host, "ポート": self._port},
             )
-            self._emit_error("サーバーを開始できませんでした。Tailscaleを確認してください。")
+            self._emit_error(
+                "サーバーを開始できませんでした。\n\n"
+                "以下をご確認ください：\n"
+                "• Tailscaleは正常に動作していますか？\n"
+                "• 本システムを複数起動済みではありませんか？すべて閉じてから再度起動してください。\n"
+                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
+            )
             self._emit_status(AppStatus.ERROR, "サーバーを開始できませんでした")
 
     # ------------------------------------------------------------------
@@ -151,7 +169,9 @@ class FrontController:
                 "Meet URL受信",
                 {"メッセージ": data},
             )
-            self._emit_error("Meet URLを受信できませんでした")
+            self._emit_error(
+                "Meet URLを受信できませんでした。\n\nシステム管理者にお問い合わせください。",
+            )
             return
         self._current_meet_url = meet_url
         self._emit_status(
@@ -179,7 +199,13 @@ class FrontController:
                 self._participant.cleanup()
             self._participant = MeetParticipant(display_name=self._display_name)
             if not self._participant.join_meeting(meet_url):
-                msg = "Google Meetへの参加に失敗しました"
+                msg = (
+                    "Google Meetへの参加に失敗しました。\n\n"
+                    "以下をご確認ください：\n"
+                    "• ブラウザの権限設定でカメラ・マイクは許可されていますか？\n"
+                    "• インターネット接続は安定していますか？\n"
+                    "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
+                )
                 raise RuntimeError(msg)  # noqa: TRY301
             detail = "現在対応中です"
             if self._current_remote_label:

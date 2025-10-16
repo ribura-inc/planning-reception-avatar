@@ -78,7 +78,14 @@ class RemoteController:
         self._emit_network(result.message)
         self._emit_devices(result.tailscale_devices)
         if not result.tailscale_devices:
-            self._emit_error("接続先が見つかりません。Tailscaleが起動しているか確認してください。")
+            self._emit_error(
+                "接続先が見つかりません。\n\n"
+                "以下をご確認ください：\n"
+                "• Windows立ち上げ直後はTailscaleアプリが未起動の可能性があります。しばらくしてから接続先更新ボタンを押してみてください。\n"  # noqa: E501
+                "• Tailscaleにログインしていますか？\n"
+                "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
+                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
+            )
         else:
             self._emit_error("")
 
@@ -87,7 +94,14 @@ class RemoteController:
         self._emit_network(result.message)
         self._emit_devices(result.tailscale_devices)
         if not result.tailscale_devices:
-            self._emit_error("接続先が見つかりません。Tailscaleが起動しているか確認してください。")
+            self._emit_error(
+                "接続先が見つかりません。\n\n"
+                "以下をご確認ください：\n"
+                "• Tailscaleアプリは起動していますか？\n"
+                "• Tailscaleにログインしていますか？\n"
+                "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
+                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
+            )
         else:
             self._emit_error("")
 
@@ -115,12 +129,25 @@ class RemoteController:
             self._emit_status(AppStatus.CONNECTING, "フロントPCに接続しています")
             client = CommunicationClient(device_name, 9999)
             if not client.connect():
-                msg = "フロントPCに接続できませんでした"
+                msg = (
+                    "フロントPCに接続できませんでした。\n\n"
+                    "以下をご確認ください：\n"
+                    "• フロントPCでシステムは起動済みですか？\n"
+                    "• フロントPC画面に「ネットワーク正常」と表示されていますか？\n"
+                    "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
+                )
                 raise RuntimeError(msg)  # noqa: TRY301
 
             self._emit_status(AppStatus.CONNECTING, "Meet URLを送信しています")
             if not client.send_meet_url(meet_url):
-                msg = "Meet URLの送信に失敗しました"
+                msg = (
+                    "Meet URLの送信に失敗しました。\n\n"
+                    "以下をご確認ください：\n"
+                    "• フロントPCとの通信が安定していますか？\n"
+                    "• フロントPCでエラーが表示されていないか確認してください\n"
+                    "• ネットワーク接続を確認してください\n\n"
+                    "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
+                )
                 raise RuntimeError(msg)  # noqa: TRY301
 
             self._emit_status(AppStatus.CONNECTING, "ブラウザを準備しています")
