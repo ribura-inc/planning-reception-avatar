@@ -106,6 +106,47 @@ class RemoteController:
             self._emit_error("")
 
     # ------------------------------------------------------------
+    # Precheck機能（Google login & 拡張機能チェック）
+    # ------------------------------------------------------------
+    def check_google_login(self) -> tuple[bool, str]:
+        """Googleログイン状態をチェックし、結果を返す（headless実行、自動クリーンアップ）."""
+        try:
+            meet_manager = MeetManager()
+            success, message = meet_manager.check_google_login()
+        except Exception as exc:  # noqa: BLE001
+            self._notifier.report_error(exc, "Googleログインチェック", {})
+            return False, "チェック中にエラーが発生しました"
+        else:
+            return success, message
+
+    def check_extension_installed(self) -> tuple[bool, str]:
+        """拡張機能のインストール状態をチェックし、結果を返す（headless実行、自動クリーンアップ）."""
+        try:
+            meet_manager = MeetManager()
+            success, message = meet_manager.check_extension_installed()
+        except Exception as exc:  # noqa: BLE001
+            self._notifier.report_error(exc, "拡張機能チェック", {})
+            return False, "チェック中にエラーが発生しました"
+        else:
+            return success, message
+
+    def open_google_login_page(self) -> None:
+        """Googleログインページを開く."""
+        try:
+            meet_manager = MeetManager()
+            meet_manager.open_google_login_page()
+        except Exception as exc:  # noqa: BLE001
+            self._notifier.report_error(exc, "Googleログインページ表示", {})
+
+    def open_extension_page(self) -> None:
+        """拡張機能ページを開く."""
+        try:
+            meet_manager = MeetManager()
+            meet_manager.open_extension_page()
+        except Exception as exc:  # noqa: BLE001
+            self._notifier.report_error(exc, "拡張機能ページ表示", {})
+
+    # ------------------------------------------------------------
     # セッション制御
     # ------------------------------------------------------------
     def start_session(self, device_name: str) -> None:

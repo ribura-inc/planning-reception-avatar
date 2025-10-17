@@ -17,6 +17,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 
 from src.config import Config
 from src.utils.selenium_utils import retry_operation, wait_for_element_safely
@@ -267,6 +268,117 @@ class MeetManager:
                 logger.info("MeetManagerのクリーンアップが完了しました")
             except Exception:
                 logger.exception("クリーンアップエラー")
+
+    def check_google_login(self) -> tuple[bool, str]:
+        """Googleアカウントのログイン状態を確認（headless実行、終了後自動クリーンアップ）.
+
+        Returns:
+            (成功フラグ, メッセージ)
+        """
+        temp_driver = None
+        try:
+            logger.info("Googleアカウントのログイン状態を確認中...")
+            # headlessモードで一時的なdriverを作成
+            temp_driver = get_webdriver(headless=True)
+
+            temp_driver.get("https://myaccount.google.com")
+            time.sleep(3)
+
+            # ログイン済みかチェック
+            current_url = temp_driver.current_url
+            if "myaccount.google.com" in current_url and "signin" not in current_url:
+                logger.info("✅ Googleアカウントにログイン済み")
+                return True, "Googleアカウントにログイン済みです"
+        except Exception:
+            logger.exception("Googleログイン確認中にエラー")
+            return False, "Googleログイン確認中にエラーが発生しました"
+        else:
+            logger.warning("❌ Googleアカウントにログインしていません")
+            return False, "Googleアカウントにログインしていません"
+        finally:
+            # 一時driverをクリーンアップ
+            if temp_driver:
+                try:
+                    release_webdriver()
+                    logger.info("一時driver（Googleログイン確認用）をクリーンアップしました")
+                except Exception:
+                    logger.exception("一時driver解放エラー")
+
+    def check_extension_installed(self) -> tuple[bool, str]:
+        """Auto-Admit拡張機能のインストール状態を確認（headless実行、終了後自動クリーンアップ）.
+
+        Returns:
+            (成功フラグ, メッセージ)
+        """
+        extension_url = (
+            "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
+        )
+        temp_driver = None
+        try:
+            logger.info("Auto-Admit拡張機能の確認中...")
+            # headlessモードで一時的なdriverを作成
+            temp_driver = get_webdriver(headless=True)
+
+            temp_driver.get(extension_url)
+            time.sleep(4)
+
+            # インストール済みチェック（「Chrome から削除」ボタンがあるか）
+            try:
+                WebDriverWait(temp_driver, 3).until(
+                    lambda d: d.find_element(By.XPATH, Config.ChromeExtension.REMOVE_BUTTON_XPATH),
+                )
+            except TimeoutException:
+                pass
+            else:
+                logger.info("✅ Auto-Admit拡張機能がインストール済み")
+                return True, "Auto-Admit拡張機能はインストール済みです"
+
+            # 未インストールチェック（「Chrome に追加」ボタンがあるか）
+            try:
+                WebDriverWait(temp_driver, 3).until(
+                    lambda d: d.find_element(By.XPATH, Config.ChromeExtension.ADD_BUTTON_XPATH),
+                )
+            except TimeoutException:
+                pass
+            else:
+                logger.warning("❌ Auto-Admit拡張機能がインストールされていません")
+                return False, f"Auto-Admit拡張機能をインストールしてください: {extension_url}"
+        except Exception:
+            logger.exception("拡張機能確認中にエラー")
+            return False, "拡張機能確認中にエラーが発生しました"
+        else:
+            return False, "拡張機能のインストール状態を確認できませんでした"
+        finally:
+            # 一時driverをクリーンアップ
+            if temp_driver:
+                try:
+                    release_webdriver()
+                    logger.info("一時driver（拡張機能確認用）をクリーンアップしました")
+                except Exception:
+                    logger.exception("一時driver解放エラー")
+
+    def open_google_login_page(self) -> None:
+        """Googleログインページを開く"""
+        try:
+            if not self.driver:
+                self.setup_browser()
+            self.driver.get("https://accounts.google.com/")
+            logger.info("Googleログインページを開きました")
+        except Exception:
+            logger.exception("Googleログインページを開けませんでした")
+
+    def open_extension_page(self) -> None:
+        """Auto-Admit拡張機能のページを開く"""
+        try:
+            if not self.driver:
+                self.setup_browser()
+            extension_url = (
+                "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
+            )
+            self.driver.get(extension_url)
+            logger.info("拡張機能ページを開きました")
+        except Exception:
+            logger.exception("拡張機能ページを開けませんでした")
 
     @classmethod
     def cleanup_shared_driver(cls) -> None:

@@ -22,6 +22,10 @@ class RemoteUI:
         self._disconnect_handler: Callable[[], None] | None = None
         self._refresh_handler: Callable[[], None] | None = None
         self._ready_handler: Callable[[], None] | None = None
+        self._check_google_login_handler: Callable[[], tuple[bool, str]] | None = None
+        self._check_extension_handler: Callable[[], tuple[bool, str]] | None = None
+        self._open_google_page_handler: Callable[[], None] | None = None
+        self._open_extension_page_handler: Callable[[], None] | None = None
 
         self._device_options: dict[str, str] = {}
 
@@ -33,6 +37,12 @@ class RemoteUI:
         self.device_dropdown: ft.Dropdown | None = None
         self.connect_button: ft.FilledButton | None = None
         self.disconnect_button: ft.OutlinedButton | None = None
+        self.google_login_result_label: ft.Text | None = None
+        self.extension_result_label: ft.Text | None = None
+        self.check_google_button: ft.ElevatedButton | None = None
+        self.check_extension_button: ft.ElevatedButton | None = None
+        self.open_google_button: ft.TextButton | None = None
+        self.open_extension_button: ft.TextButton | None = None
 
     # ------------------------------------------------------------------
     # ハンドラー登録
@@ -43,16 +53,24 @@ class RemoteUI:
         on_disconnect: Callable[[], None],
         on_refresh: Callable[[], None],
         on_ready: Callable[[], None],
+        on_check_google_login: Callable[[], tuple[bool, str]] | None = None,
+        on_check_extension: Callable[[], tuple[bool, str]] | None = None,
+        on_open_google_page: Callable[[], None] | None = None,
+        on_open_extension_page: Callable[[], None] | None = None,
     ) -> None:
         self._connect_handler = on_connect
         self._disconnect_handler = on_disconnect
         self._refresh_handler = on_refresh
         self._ready_handler = on_ready
+        self._check_google_login_handler = on_check_google_login
+        self._check_extension_handler = on_check_extension
+        self._open_google_page_handler = on_open_google_page
+        self._open_extension_page_handler = on_open_extension_page
 
     # ------------------------------------------------------------------
     # コントローラーから呼び出される公開API
     # ------------------------------------------------------------------
-    def update_status(self, payload: StatusMessage) -> None:  # noqa: C901, PLR0912
+    def update_status(self, payload: StatusMessage) -> None:  # noqa: C901, PLR0912, PLR0915
         if not self.status_label or not self.page:
             return
         self.status_label.value = payload.headline if payload.headline else payload.status.value
@@ -75,11 +93,21 @@ class RemoteUI:
                 self.disconnect_button.disabled = False
             if self.device_dropdown:
                 self.device_dropdown.disabled = True
+            # 接続中は確認ボタンを無効化
+            if self.check_google_button:
+                self.check_google_button.disabled = True
+            if self.check_extension_button:
+                self.check_extension_button.disabled = True
         elif payload.status == AppStatus.CONNECTED:
             if self.connect_button:
                 self.connect_button.disabled = True
             if self.disconnect_button:
                 self.disconnect_button.disabled = False
+            # 接続中は確認ボタンを無効化
+            if self.check_google_button:
+                self.check_google_button.disabled = True
+            if self.check_extension_button:
+                self.check_extension_button.disabled = True
         elif payload.status in {AppStatus.IDLE, AppStatus.ERROR}:
             if self.connect_button:
                 self.connect_button.disabled = not self._device_options
@@ -87,11 +115,21 @@ class RemoteUI:
                 self.disconnect_button.disabled = True
             if self.device_dropdown:
                 self.device_dropdown.disabled = False
+            # 待機中/エラー時は確認ボタンを有効化
+            if self.check_google_button:
+                self.check_google_button.disabled = False
+            if self.check_extension_button:
+                self.check_extension_button.disabled = False
         elif payload.status == AppStatus.SHUTTING_DOWN:
             if self.connect_button:
                 self.connect_button.disabled = True
             if self.disconnect_button:
                 self.disconnect_button.disabled = True
+            # 終了中は確認ボタンを無効化
+            if self.check_google_button:
+                self.check_google_button.disabled = True
+            if self.check_extension_button:
+                self.check_extension_button.disabled = True
 
         self.page.update()
 
@@ -148,8 +186,8 @@ class RemoteUI:
     def _main(self, page: ft.Page) -> None:
         self.page = page
         page.title = "VTuber Reception - Remote"
-        page.window.width = 800
-        page.window.height = 600
+        page.window.width = 1000
+        page.window.height = 800
         page.padding = 24
         page.theme_mode = ft.ThemeMode.LIGHT
 
@@ -188,6 +226,37 @@ class RemoteUI:
             on_click=self._handle_disconnect,
         )
 
+        # Precheckセクション
+        precheck_header = ft.Text(
+            "事前チェック（一定期間空いてから作動させる場合は、事前チェックで問題ないことをご確認ください）",
+            size=18,
+            weight=ft.FontWeight.BOLD,
+        )
+
+        self.google_login_result_label = ft.Text("未確認", size=12)
+        self.check_google_button = ft.ElevatedButton(
+            text="Googleログイン確認",
+            icon=ft.Icons.LOGIN,
+            on_click=self._handle_check_google_login,
+        )
+        self.open_google_button = ft.TextButton(
+            text="Googleログインページを開く",
+            icon=ft.Icons.OPEN_IN_BROWSER,
+            on_click=self._handle_open_google_page,
+        )
+
+        self.extension_result_label = ft.Text("未確認", size=12)
+        self.check_extension_button = ft.ElevatedButton(
+            text="拡張機能確認",
+            icon=ft.Icons.EXTENSION,
+            on_click=self._handle_check_extension,
+        )
+        self.open_extension_button = ft.TextButton(
+            text="拡張機能ページを開く",
+            icon=ft.Icons.OPEN_IN_BROWSER,
+            on_click=self._handle_open_extension_page,
+        )
+
         page.add(
             ft.Column(
                 [
@@ -202,6 +271,20 @@ class RemoteUI:
                     ft.Row([self.connect_button, self.disconnect_button], spacing=16),
                     self.error_label,
                     ft.Text("接続中はChromeブラウザが自動で起動します", size=12, color=ft.Colors.GREY),
+                    ft.Divider(height=20),
+                    precheck_header,
+                    ft.Row(
+                        [self.check_google_button, self.open_google_button],
+                        spacing=8,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    self.google_login_result_label,
+                    ft.Row(
+                        [self.check_extension_button, self.open_extension_button],
+                        spacing=8,
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    self.extension_result_label,
                 ],
                 spacing=18,
             ),
@@ -237,3 +320,59 @@ class RemoteUI:
         if self._refresh_handler:
             thread = threading.Thread(target=self._refresh_handler, daemon=True)
             thread.start()
+
+    def _handle_check_google_login(self, _event: ft.ControlEvent) -> None:
+        """Googleログイン確認ボタン押下時の処理"""
+        if not self._check_google_login_handler or not self.google_login_result_label or not self.page:
+            return
+
+        def _run_check() -> None:
+            if not self._check_google_login_handler or not self.google_login_result_label or not self.page:
+                return
+            self.google_login_result_label.value = "確認中..."
+            self.google_login_result_label.color = ft.Colors.BLUE
+            self.page.update()
+
+            success, message = self._check_google_login_handler()
+
+            self.google_login_result_label.value = message
+            self.google_login_result_label.color = ft.Colors.GREEN if success else ft.Colors.RED
+            self.page.update()
+
+        thread = threading.Thread(target=_run_check, daemon=True)
+        thread.start()
+
+    def _handle_check_extension(self, _event: ft.ControlEvent) -> None:
+        """拡張機能確認ボタン押下時の処理"""
+        if not self._check_extension_handler or not self.extension_result_label or not self.page:
+            return
+
+        def _run_check() -> None:
+            if not self._check_extension_handler or not self.extension_result_label or not self.page:
+                return
+            self.extension_result_label.value = "確認中..."
+            self.extension_result_label.color = ft.Colors.BLUE
+            self.page.update()
+
+            success, message = self._check_extension_handler()
+
+            self.extension_result_label.value = message
+            self.extension_result_label.color = ft.Colors.GREEN if success else ft.Colors.RED
+            self.page.update()
+
+        thread = threading.Thread(target=_run_check, daemon=True)
+        thread.start()
+
+    def _handle_open_google_page(self, _event: ft.ControlEvent) -> None:
+        """Googleログインページを開くボタン押下時の処理"""
+        if not self._open_google_page_handler:
+            return
+        thread = threading.Thread(target=self._open_google_page_handler, daemon=True)
+        thread.start()
+
+    def _handle_open_extension_page(self, _event: ft.ControlEvent) -> None:
+        """拡張機能ページを開くボタン押下時の処理"""
+        if not self._open_extension_page_handler:
+            return
+        thread = threading.Thread(target=self._open_extension_page_handler, daemon=True)
+        thread.start()

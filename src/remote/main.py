@@ -28,6 +28,10 @@ def main() -> None:
         on_disconnect=controller.end_session,
         on_refresh=controller.refresh_devices,
         on_ready=controller.initialize,
+        on_check_google_login=controller.check_google_login,
+        on_check_extension=controller.check_extension_installed,
+        on_open_google_page=controller.open_google_login_page,
+        on_open_extension_page=controller.open_extension_page,
     )
 
     try:
