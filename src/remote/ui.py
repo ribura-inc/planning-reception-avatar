@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
+from src.config import Config
 from src.models.state import AppStatus, StatusMessage
 
 if TYPE_CHECKING:
@@ -58,6 +59,18 @@ class RemoteUI:
         on_open_google_page: Callable[[], None] | None = None,
         on_open_extension_page: Callable[[], None] | None = None,
     ) -> None:
+        """コントローラーからのコールバックハンドラーを登録する。
+
+        Args:
+            on_connect: 接続開始時のハンドラー（引数: デバイス名）
+            on_disconnect: 切断時のハンドラー
+            on_refresh: 再取得時のハンドラー
+            on_ready: UI準備完了時のハンドラー
+            on_check_google_login: Googleログイン確認ハンドラー
+            on_check_extension: 拡張機能確認ハンドラー
+            on_open_google_page: Googleログインページを開くハンドラー
+            on_open_extension_page: 拡張機能ページを開くハンドラー
+        """
         self._connect_handler = on_connect
         self._disconnect_handler = on_disconnect
         self._refresh_handler = on_refresh
@@ -68,11 +81,86 @@ class RemoteUI:
         self._open_extension_page_handler = on_open_extension_page
 
     # ------------------------------------------------------------------
+    # 内部ヘルパーメソッド
+    # ------------------------------------------------------------------
+    def _set_disabled(self, control: ft.Control | None, disabled: bool) -> None:  # noqa: FBT001
+        if control is not None:
+            control.disabled = disabled
+
+    def _run_async(self, handler: Callable[..., None] | None, *args: object) -> None:
+        if handler is None:
+            return
+        threading.Thread(target=handler, args=args, daemon=True).start()
+
+    def _update_label(
+        self,
+        label: ft.Text | None,
+        value: str,
+        *,
+        color: str | None = None,
+    ) -> None:
+        if not label:
+            return
+        label.value = value
+        if color is not None:
+            label.color = color
+
+    def _update_precheck_result(self, label: ft.Text | None, result: tuple[bool, str]) -> None:
+        if not self.page or not label:
+            return
+        success, message = result
+        self._update_label(
+            label,
+            message,
+            color=ft.Colors.GREEN if success else ft.Colors.RED,
+        )
+        self.page.update()
+
+    def _update_button_states(self, status: AppStatus) -> None:
+        """ステータスに応じてボタンの有効/無効状態を更新する。
+
+        Args:
+            status: 現在のアプリケーションステータス
+        """
+        if status in {AppStatus.CONNECTING, AppStatus.DISCONNECTING, AppStatus.CONNECTED}:
+            # 接続中・接続準備中・切断中は接続ボタンを無効化、切断ボタンを有効化
+            self._set_disabled(self.connect_button, True)
+            self._set_disabled(self.disconnect_button, False)
+            self._set_disabled(self.device_dropdown, True)
+            # プレチェックボタンも無効化
+            self._set_disabled(self.check_google_button, True)
+            self._set_disabled(self.check_extension_button, True)
+
+        elif status in {AppStatus.IDLE, AppStatus.ERROR}:
+            # 待機中・エラー時は接続ボタンを有効化（デバイスがある場合）
+            if self.connect_button:
+                self.connect_button.disabled = not self._device_options
+            self._set_disabled(self.disconnect_button, True)
+            self._set_disabled(self.device_dropdown, False)
+            # プレチェックボタンを有効化
+            self._set_disabled(self.check_google_button, False)
+            self._set_disabled(self.check_extension_button, False)
+
+        elif status == AppStatus.SHUTTING_DOWN:
+            # 終了中はすべてのボタンを無効化
+            self._set_disabled(self.connect_button, True)
+            self._set_disabled(self.disconnect_button, True)
+            self._set_disabled(self.check_google_button, True)
+            self._set_disabled(self.check_extension_button, True)
+
+    # ------------------------------------------------------------------
     # コントローラーから呼び出される公開API
     # ------------------------------------------------------------------
-    def update_status(self, payload: StatusMessage) -> None:  # noqa: C901, PLR0912, PLR0915
+    def update_status(self, payload: StatusMessage) -> None:
+        """ステータス更新時の表示変更を行う。
+
+        Args:
+            payload: ステータスメッセージ（見出し、詳細、ステータス）
+        """
         if not self.status_label or not self.page:
             return
+
+        # ステータステキストの更新
         self.status_label.value = payload.headline if payload.headline else payload.status.value
         if self.detail_label:
             self.detail_label.value = payload.detail or ""
@@ -86,60 +174,27 @@ class RemoteUI:
             self.status_label.color = ft.Colors.BLACK
 
         # ボタンの有効/無効制御
-        if payload.status in {AppStatus.CONNECTING, AppStatus.DISCONNECTING}:
-            if self.connect_button:
-                self.connect_button.disabled = True
-            if self.disconnect_button:
-                self.disconnect_button.disabled = False
-            if self.device_dropdown:
-                self.device_dropdown.disabled = True
-            # 接続中は確認ボタンを無効化
-            if self.check_google_button:
-                self.check_google_button.disabled = True
-            if self.check_extension_button:
-                self.check_extension_button.disabled = True
-        elif payload.status == AppStatus.CONNECTED:
-            if self.connect_button:
-                self.connect_button.disabled = True
-            if self.disconnect_button:
-                self.disconnect_button.disabled = False
-            # 接続中は確認ボタンを無効化
-            if self.check_google_button:
-                self.check_google_button.disabled = True
-            if self.check_extension_button:
-                self.check_extension_button.disabled = True
-        elif payload.status in {AppStatus.IDLE, AppStatus.ERROR}:
-            if self.connect_button:
-                self.connect_button.disabled = not self._device_options
-            if self.disconnect_button:
-                self.disconnect_button.disabled = True
-            if self.device_dropdown:
-                self.device_dropdown.disabled = False
-            # 待機中/エラー時は確認ボタンを有効化
-            if self.check_google_button:
-                self.check_google_button.disabled = False
-            if self.check_extension_button:
-                self.check_extension_button.disabled = False
-        elif payload.status == AppStatus.SHUTTING_DOWN:
-            if self.connect_button:
-                self.connect_button.disabled = True
-            if self.disconnect_button:
-                self.disconnect_button.disabled = True
-            # 終了中は確認ボタンを無効化
-            if self.check_google_button:
-                self.check_google_button.disabled = True
-            if self.check_extension_button:
-                self.check_extension_button.disabled = True
+        self._update_button_states(payload.status)
 
         self.page.update()
 
     def show_network_message(self, message: str) -> None:
+        """ネットワーク状態メッセージを表示する。
+
+        Args:
+            message: 表示するメッセージ
+        """
         if not self.network_label or not self.page:
             return
         self.network_label.value = message
         self.page.update()
 
     def update_devices(self, devices: dict[str, str]) -> None:
+        """接続先デバイス一覧を更新する。
+
+        Args:
+            devices: デバイス名をキー、IPアドレスを値とする辞書
+        """
         self._device_options = devices
         if not self.device_dropdown or not self.page:
             return
@@ -149,17 +204,20 @@ class RemoteUI:
         if options:
             if self.device_dropdown.value not in devices:
                 self.device_dropdown.value = options[0].key
-            self.device_dropdown.disabled = False
-            if self.connect_button:
-                self.connect_button.disabled = False
+            self._set_disabled(self.device_dropdown, False)
+            self._set_disabled(self.connect_button, False)
         else:
             self.device_dropdown.value = None
-            self.device_dropdown.disabled = True
-            if self.connect_button:
-                self.connect_button.disabled = True
+            self._set_disabled(self.device_dropdown, True)
+            self._set_disabled(self.connect_button, True)
         self.page.update()
 
     def show_error(self, message: str) -> None:
+        """エラーメッセージを表示する。
+
+        Args:
+            message: 表示するエラーメッセージ（空文字列の場合は非表示）
+        """
         if not self.error_label or not self.page:
             return
         self.error_label.value = message
@@ -167,14 +225,16 @@ class RemoteUI:
         self.page.update()
 
     def set_session_active(self, active: bool) -> None:  # noqa: FBT001
+        """セッションの有効/無効状態を設定する。
+
+        Args:
+            active: セッションがアクティブかどうか
+        """
         if not self.page:
             return
-        if self.connect_button:
-            self.connect_button.disabled = active
-        if self.disconnect_button:
-            self.disconnect_button.disabled = not active
-        if self.device_dropdown:
-            self.device_dropdown.disabled = active
+        self._set_disabled(self.connect_button, active)
+        self._set_disabled(self.disconnect_button, not active)
+        self._set_disabled(self.device_dropdown, active)
         self.page.update()
 
     # ------------------------------------------------------------------
@@ -186,17 +246,17 @@ class RemoteUI:
     def _main(self, page: ft.Page) -> None:
         self.page = page
         page.title = "VTuber Reception - Remote"
-        page.window.width = 1000
-        page.window.height = 800
-        page.padding = 24
+        page.window.width = Config.UI.Window.REMOTE_WIDTH
+        page.window.height = Config.UI.Window.REMOTE_HEIGHT
+        page.padding = Config.UI.Spacing.PAGE_PADDING
         page.theme_mode = ft.ThemeMode.LIGHT
 
-        header = ft.Text("リモート接続コントローラ", size=24, weight=ft.FontWeight.BOLD)
+        header = ft.Text("リモート接続コントローラ", size=Config.UI.FontSize.TITLE, weight=ft.FontWeight.BOLD)
 
-        self.status_label = ft.Text("状態: 待機中", size=20, weight=ft.FontWeight.W_600)
-        self.detail_label = ft.Text("", size=14, color=ft.Colors.GREY)
-        self.network_label = ft.Text("ネットワーク状態を確認しています...", size=12)
-        self.error_label = ft.Text("", size=12, color=ft.Colors.RED)
+        self.status_label = ft.Text("状態: 待機中", size=Config.UI.FontSize.STATUS, weight=ft.FontWeight.W_600)
+        self.detail_label = ft.Text("", size=Config.UI.FontSize.DETAIL, color=ft.Colors.GREY)
+        self.network_label = ft.Text("ネットワーク状態を確認しています...", size=Config.UI.FontSize.SMALL)
+        self.error_label = ft.Text("", size=Config.UI.FontSize.SMALL, color=ft.Colors.RED)
         self.error_label.visible = False
 
         self.device_dropdown = ft.Dropdown(
@@ -229,11 +289,11 @@ class RemoteUI:
         # Precheckセクション
         precheck_header = ft.Text(
             "事前チェック（一定期間空いてから作動させる場合は、事前チェックで問題ないことをご確認ください）",
-            size=18,
+            size=Config.UI.FontSize.SECTION_HEADER,
             weight=ft.FontWeight.BOLD,
         )
 
-        self.google_login_result_label = ft.Text("未確認", size=12)
+        self.google_login_result_label = ft.Text("未確認", size=Config.UI.FontSize.SMALL)
         self.check_google_button = ft.ElevatedButton(
             text="Googleログイン確認",
             icon=ft.Icons.LOGIN,
@@ -245,7 +305,7 @@ class RemoteUI:
             on_click=self._handle_open_google_page,
         )
 
-        self.extension_result_label = ft.Text("未確認", size=12)
+        self.extension_result_label = ft.Text("未確認", size=Config.UI.FontSize.SMALL)
         self.check_extension_button = ft.ElevatedButton(
             text="拡張機能確認",
             icon=ft.Icons.EXTENSION,
@@ -265,114 +325,89 @@ class RemoteUI:
                         content=ft.Column(
                             [self.status_label, self.detail_label, self.network_label],
                         ),
-                        padding=ft.padding.all(12),
+                        padding=ft.padding.all(Config.UI.Spacing.CONTAINER),
                     ),
                     ft.Row([self.device_dropdown, refresh_button], alignment=ft.MainAxisAlignment.START),
-                    ft.Row([self.connect_button, self.disconnect_button], spacing=16),
+                    ft.Row([self.connect_button, self.disconnect_button], spacing=Config.UI.Spacing.LARGE),
                     self.error_label,
-                    ft.Text("接続中はChromeブラウザが自動で起動します", size=12, color=ft.Colors.GREY),
+                    ft.Text(
+                        "接続中はChromeブラウザが自動で起動します",
+                        size=Config.UI.FontSize.SMALL,
+                        color=ft.Colors.GREY,
+                    ),
                     ft.Divider(height=20),
                     precheck_header,
                     ft.Row(
                         [self.check_google_button, self.open_google_button],
-                        spacing=8,
+                        spacing=Config.UI.Spacing.ROW,
                         alignment=ft.MainAxisAlignment.START,
                     ),
                     self.google_login_result_label,
                     ft.Row(
                         [self.check_extension_button, self.open_extension_button],
-                        spacing=8,
+                        spacing=Config.UI.Spacing.ROW,
                         alignment=ft.MainAxisAlignment.START,
                     ),
                     self.extension_result_label,
                 ],
-                spacing=18,
+                spacing=Config.UI.Spacing.SECTION,
             ),
         )
 
         page.update()
 
         if self._ready_handler:
-            threading.Thread(target=self._ready_handler, daemon=True).start()
+            self._run_async(self._ready_handler)
 
     # ------------------------------------------------------------------
     # UIイベントハンドラー
     # ------------------------------------------------------------------
     def _handle_connect(self, _event: ft.ControlEvent) -> None:
-        if not self._connect_handler or not self.device_dropdown:
+        if not self.device_dropdown:
             return
         device = self.device_dropdown.value
         if not device:
             self.show_error("接続先を選択してください")
             return
         self.set_session_active(True)
-        thread = threading.Thread(target=self._connect_handler, args=(device,), daemon=True)
-        thread.start()
+        self._run_async(self._connect_handler, device)
 
     def _handle_disconnect(self, _event: ft.ControlEvent) -> None:
-        if not self._disconnect_handler:
-            return
         self.set_session_active(False)
-        thread = threading.Thread(target=self._disconnect_handler, daemon=True)
-        thread.start()
+        self._run_async(self._disconnect_handler)
 
     def _handle_refresh(self, _event: ft.ControlEvent) -> None:
-        if self._refresh_handler:
-            thread = threading.Thread(target=self._refresh_handler, daemon=True)
-            thread.start()
+        self._run_async(self._refresh_handler)
 
     def _handle_check_google_login(self, _event: ft.ControlEvent) -> None:
         """Googleログイン確認ボタン押下時の処理"""
-        if not self._check_google_login_handler or not self.google_login_result_label or not self.page:
-            return
-
-        def _run_check() -> None:
-            if not self._check_google_login_handler or not self.google_login_result_label or not self.page:
-                return
-            self.google_login_result_label.value = "確認中..."
-            self.google_login_result_label.color = ft.Colors.BLUE
-            self.page.update()
-
-            success, message = self._check_google_login_handler()
-
-            self.google_login_result_label.value = message
-            self.google_login_result_label.color = ft.Colors.GREEN if success else ft.Colors.RED
-            self.page.update()
-
-        thread = threading.Thread(target=_run_check, daemon=True)
-        thread.start()
+        self._handle_precheck(self._check_google_login_handler, self.google_login_result_label)
 
     def _handle_check_extension(self, _event: ft.ControlEvent) -> None:
         """拡張機能確認ボタン押下時の処理"""
-        if not self._check_extension_handler or not self.extension_result_label or not self.page:
-            return
-
-        def _run_check() -> None:
-            if not self._check_extension_handler or not self.extension_result_label or not self.page:
-                return
-            self.extension_result_label.value = "確認中..."
-            self.extension_result_label.color = ft.Colors.BLUE
-            self.page.update()
-
-            success, message = self._check_extension_handler()
-
-            self.extension_result_label.value = message
-            self.extension_result_label.color = ft.Colors.GREEN if success else ft.Colors.RED
-            self.page.update()
-
-        thread = threading.Thread(target=_run_check, daemon=True)
-        thread.start()
+        self._handle_precheck(self._check_extension_handler, self.extension_result_label)
 
     def _handle_open_google_page(self, _event: ft.ControlEvent) -> None:
         """Googleログインページを開くボタン押下時の処理"""
-        if not self._open_google_page_handler:
-            return
-        thread = threading.Thread(target=self._open_google_page_handler, daemon=True)
-        thread.start()
+        self._run_async(self._open_google_page_handler)
 
     def _handle_open_extension_page(self, _event: ft.ControlEvent) -> None:
         """拡張機能ページを開くボタン押下時の処理"""
-        if not self._open_extension_page_handler:
+        self._run_async(self._open_extension_page_handler)
+
+    def _handle_precheck(
+        self,
+        handler: Callable[[], tuple[bool, str]] | None,
+        label: ft.Text | None,
+    ) -> None:
+        if not handler or not label or not self.page:
             return
-        thread = threading.Thread(target=self._open_extension_page_handler, daemon=True)
-        thread.start()
+
+        def _execute_check() -> None:
+            if not self.page:
+                return
+            self._update_label(label, "確認中...", color=ft.Colors.BLUE)
+            self.page.update()
+            self._update_precheck_result(label, handler())
+
+        self._run_async(_execute_check)

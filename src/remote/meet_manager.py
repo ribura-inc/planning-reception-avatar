@@ -8,13 +8,14 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 import psutil
 from google.apps import meet_v2
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -24,15 +25,11 @@ from src.utils.selenium_utils import retry_operation, wait_for_element_safely
 from src.utils.slack import SessionLocation, notify_error
 
 from .webdriver_manager import (
-    cleanup_webdriver,
     get_webdriver,
     get_webdriver_chrome_pid,
     is_webdriver_active,
     release_webdriver,
 )
-
-if TYPE_CHECKING:
-    from selenium import webdriver
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +43,10 @@ class MeetManager:
     # 待機時間設定
     BUTTON_WAIT_TIMEOUT = 10
 
+    AUTO_ADMIT_EXTENSION_URL: ClassVar[str] = (
+        "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
+    )
+
     def __init__(self) -> None:
         self.driver: webdriver.Chrome | None = None
         self.meet_url: str | None = None
@@ -53,6 +54,30 @@ class MeetManager:
         self._process_monitor_thread: threading.Thread | None = None
         self._monitoring = False
         self._on_chrome_exit_callback: Callable[[], None] | None = None
+
+    def _run_with_temp_driver(
+        self,
+        context_log: str,
+        action: Callable[[webdriver.Chrome], tuple[bool, str]],
+        error_log: str,
+        error_message: str,
+        cleanup_log: str,
+    ) -> tuple[bool, str]:
+        temp_driver: webdriver.Chrome | None = None
+        try:
+            logger.info(context_log)
+            temp_driver = get_webdriver(headless=True)
+            return action(temp_driver)
+        except Exception:
+            logger.exception(error_log)
+            return False, error_message
+        finally:
+            if temp_driver:
+                try:
+                    release_webdriver()
+                    logger.info(cleanup_log)
+                except Exception:
+                    logger.exception("一時driver解放エラー")
 
     def create_meet_space(self) -> str:
         """Google Meet APIを使用して新しいMeetスペースを作成"""
@@ -288,34 +313,26 @@ class MeetManager:
         Returns:
             (成功フラグ, メッセージ)
         """
-        temp_driver = None
-        try:
-            logger.info("Googleアカウントのログイン状態を確認中...")
-            # headlessモードで一時的なdriverを作成
-            temp_driver = get_webdriver(headless=True)
 
-            temp_driver.get("https://myaccount.google.com")
+        def _action(driver: webdriver.Chrome) -> tuple[bool, str]:
+            driver.get("https://myaccount.google.com")
             time.sleep(3)
 
-            # ログイン済みかチェック
-            current_url = temp_driver.current_url
+            current_url = driver.current_url
             if "myaccount.google.com" in current_url and "signin" not in current_url:
                 logger.info("✅ Googleアカウントにログイン済み")
                 return True, "Googleアカウントにログイン済みです"
-        except Exception:
-            logger.exception("Googleログイン確認中にエラー")
-            return False, "Googleログイン確認中にエラーが発生しました"
-        else:
+
             logger.warning("❌ Googleアカウントにログインしていません")
             return False, "Googleアカウントにログインしていません"
-        finally:
-            # 一時driverをクリーンアップ
-            if temp_driver:
-                try:
-                    release_webdriver()
-                    logger.info("一時driver（Googleログイン確認用）をクリーンアップしました")
-                except Exception:
-                    logger.exception("一時driver解放エラー")
+
+        return self._run_with_temp_driver(
+            "Googleアカウントのログイン状態を確認中...",
+            _action,
+            "Googleログイン確認中にエラー",
+            "Googleログイン確認中にエラーが発生しました",
+            "一時driver（Googleログイン確認用）をクリーンアップしました",
+        )
 
     def check_extension_installed(self) -> tuple[bool, str]:
         """Auto-Admit拡張機能のインストール状態を確認（headless実行、終了後自動クリーンアップ）.
@@ -323,21 +340,13 @@ class MeetManager:
         Returns:
             (成功フラグ, メッセージ)
         """
-        extension_url = (
-            "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
-        )
-        temp_driver = None
-        try:
-            logger.info("Auto-Admit拡張機能の確認中...")
-            # headlessモードで一時的なdriverを作成
-            temp_driver = get_webdriver(headless=True)
 
-            temp_driver.get(extension_url)
+        def _action(driver: webdriver.Chrome) -> tuple[bool, str]:
+            driver.get(self.AUTO_ADMIT_EXTENSION_URL)
             time.sleep(4)
 
-            # インストール済みチェック（「Chrome から削除」ボタンがあるか）
             try:
-                WebDriverWait(temp_driver, 3).until(
+                WebDriverWait(driver, 3).until(
                     lambda d: d.find_element(By.XPATH, Config.ChromeExtension.REMOVE_BUTTON_XPATH),
                 )
             except TimeoutException:
@@ -346,29 +355,25 @@ class MeetManager:
                 logger.info("✅ Auto-Admit拡張機能がインストール済み")
                 return True, "Auto-Admit拡張機能はインストール済みです"
 
-            # 未インストールチェック（「Chrome に追加」ボタンがあるか）
             try:
-                WebDriverWait(temp_driver, 3).until(
+                WebDriverWait(driver, 3).until(
                     lambda d: d.find_element(By.XPATH, Config.ChromeExtension.ADD_BUTTON_XPATH),
                 )
             except TimeoutException:
                 pass
             else:
                 logger.warning("❌ Auto-Admit拡張機能がインストールされていません")
-                return False, f"Auto-Admit拡張機能をインストールしてください: {extension_url}"
-        except Exception:
-            logger.exception("拡張機能確認中にエラー")
-            return False, "拡張機能確認中にエラーが発生しました"
-        else:
+                return False, f"Auto-Admit拡張機能をインストールしてください: {self.AUTO_ADMIT_EXTENSION_URL}"
+
             return False, "拡張機能のインストール状態を確認できませんでした"
-        finally:
-            # 一時driverをクリーンアップ
-            if temp_driver:
-                try:
-                    release_webdriver()
-                    logger.info("一時driver（拡張機能確認用）をクリーンアップしました")
-                except Exception:
-                    logger.exception("一時driver解放エラー")
+
+        return self._run_with_temp_driver(
+            "Auto-Admit拡張機能の確認中...",
+            _action,
+            "拡張機能確認中にエラー",
+            "拡張機能確認中にエラーが発生しました",
+            "一時driver（拡張機能確認用）をクリーンアップしました",
+        )
 
     def open_google_login_page(self) -> None:
         """Googleログインページを開く"""
@@ -385,15 +390,7 @@ class MeetManager:
         try:
             if not self.driver:
                 self.setup_browser()
-            extension_url = (
-                "https://chromewebstore.google.com/detail/auto-admit-for-google-mee/epemkdedgaoeeobdjmkmhhhbjemckmgb"
-            )
-            self.driver.get(extension_url)
+            self.driver.get(self.AUTO_ADMIT_EXTENSION_URL)
             logger.info("拡張機能ページを開きました")
         except Exception:
             logger.exception("拡張機能ページを開けませんでした")
-
-    @classmethod
-    def cleanup_shared_driver(cls) -> None:
-        """共有ドライバーのクリーンアップ（互換性のため残す）"""
-        cleanup_webdriver()

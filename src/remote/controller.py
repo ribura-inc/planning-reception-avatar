@@ -24,6 +24,24 @@ if TYPE_CHECKING:
 class RemoteController:
     """Encapsulates the remote-side orchestration logic."""
 
+    _INITIAL_DEVICE_ERROR = (
+        "接続先が見つかりません。\n\n"
+        "以下をご確認ください：\n"
+        "• Windows立ち上げ直後はTailscaleアプリが未起動の可能性があります。しばらくしてから接続先更新ボタンを押してみてください。\n"  # noqa: E501
+        "• Tailscaleにログインしていますか？\n"
+        "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
+        "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
+    )
+
+    _REFRESH_DEVICE_ERROR = (
+        "接続先が見つかりません。\n\n"
+        "以下をご確認ください：\n"
+        "• Tailscaleアプリは起動していますか？\n"
+        "• Tailscaleにログインしていますか？\n"
+        "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
+        "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
+    )
+
     def __init__(self, notifier: RemoteNotifier) -> None:
         self._notifier = notifier
         self._status_callback: Callable[[StatusMessage], None] | None = None
@@ -74,36 +92,10 @@ class RemoteController:
     # ------------------------------------------------------------
     def initialize(self) -> None:
         """Initial network scan for device list."""
-        result = diagnose_network()
-        self._emit_network(result.message)
-        self._emit_devices(result.tailscale_devices)
-        if not result.tailscale_devices:
-            self._emit_error(
-                "接続先が見つかりません。\n\n"
-                "以下をご確認ください：\n"
-                "• Windows立ち上げ直後はTailscaleアプリが未起動の可能性があります。しばらくしてから接続先更新ボタンを押してみてください。\n"  # noqa: E501
-                "• Tailscaleにログインしていますか？\n"
-                "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
-                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
-            )
-        else:
-            self._emit_error("")
+        self._refresh_devices_with_error(self._INITIAL_DEVICE_ERROR)
 
     def refresh_devices(self) -> None:
-        result = diagnose_network()
-        self._emit_network(result.message)
-        self._emit_devices(result.tailscale_devices)
-        if not result.tailscale_devices:
-            self._emit_error(
-                "接続先が見つかりません。\n\n"
-                "以下をご確認ください：\n"
-                "• Tailscaleアプリは起動していますか？\n"
-                "• Tailscaleにログインしていますか？\n"
-                "• フロントPCがTailscaleネットワークに接続されていますか？\n\n"
-                "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。",
-            )
-        else:
-            self._emit_error("")
+        self._refresh_devices_with_error(self._REFRESH_DEVICE_ERROR)
 
     # ------------------------------------------------------------
     # Precheck機能（Google login & 拡張機能チェック）
@@ -268,3 +260,9 @@ class RemoteController:
 
         with self._session_lock:
             self._session_active = False
+
+    def _refresh_devices_with_error(self, message_when_empty: str) -> None:
+        result = diagnose_network()
+        self._emit_network(result.message)
+        self._emit_devices(result.tailscale_devices)
+        self._emit_error("" if result.tailscale_devices else message_when_empty)

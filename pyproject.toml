@@ -54,6 +54,7 @@ ignore = [
     "D415",   # first-line-should-end-with-period: docstring第一行の句読点は非強制
     "ANN002", # missing-type-annotation-for-args: *argsの型アノテーション不足
     "ANN003", # missing-type-annotation-for-kwargs: **kwargsの型アノテーション不足
+    "FBT003", # boolean-positional-value-in-call: 面倒なので無視
 ]
 fixable = ["ALL"] ## auto fixの対象
 unfixable = []

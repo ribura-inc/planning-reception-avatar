@@ -75,5 +75,36 @@ class Config:
 
     CONFIG_DIR: Path = Path.home() / ".planning-reception-avatar"
 
+    class UI:
+        """UI関連の設定（Flet GUI）"""
+
+        class Window:
+            """ウィンドウサイズ設定"""
+
+            REMOTE_WIDTH: int = 1000
+            REMOTE_HEIGHT: int = 800
+            FRONT_WIDTH: int = 800
+            FRONT_HEIGHT: int = 600
+
+        class FontSize:
+            """フォントサイズ設定"""
+
+            HEADER: int = 26  # ページヘッダー
+            TITLE: int = 24  # タイトル
+            STATUS_LARGE: int = 22  # 大きなステータス表示
+            STATUS: int = 20  # ステータス表示
+            SECTION_HEADER: int = 18  # セクションヘッダー
+            DETAIL: int = 14  # 詳細情報
+            SMALL: int = 12  # 小さいテキスト・注釈
+
+        class Spacing:
+            """スペーシング設定"""
+
+            PAGE_PADDING: int = 24  # ページ全体のpadding
+            SECTION: int = 18  # セクション間のspacing
+            LARGE: int = 16  # 大きな要素間のspacing
+            CONTAINER: int = 12  # コンテナ内のpadding
+            ROW: int = 8  # 行内の要素間のspacing
+
 
 Config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)

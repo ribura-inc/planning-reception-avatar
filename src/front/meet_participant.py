@@ -61,7 +61,7 @@ class MeetParticipant:
         options.add_argument("--use-fake-ui-for-media-stream")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)  # noqa: FBT003
+        options.add_experimental_option("useAutomationExtension", False)
         # 全画面モードで起動
         options.add_argument("--start-fullscreen")
 

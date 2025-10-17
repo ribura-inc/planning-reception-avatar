@@ -135,7 +135,7 @@ class WebDriverManager:
                 "excludeSwitches",
                 ["enable-automation"],
             )
-            chrome_options.add_experimental_option("useAutomationExtension", False)  # noqa: FBT003
+            chrome_options.add_experimental_option("useAutomationExtension", False)
             chrome_options.add_argument("--disable-gpu")
 
             if PlatformUtils.get_platform() == Platform.MACOS:
