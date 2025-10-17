@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from src.utils.error_handler import handle_uncaught_exception
 from src.utils.notification_service import FrontNotifier
 from src.utils.slack import SessionLocation
 
@@ -10,6 +11,10 @@ from .ui import FrontUI
 
 
 def main() -> None:
+    """フロントPCアプリケーションのエントリーポイント"""
+    # 想定外エラーをSlack通知する最終防衛ラインを設置
+    handle_uncaught_exception(SessionLocation.FRONT, "フロントPC")
+
     notifier = FrontNotifier(location=SessionLocation.FRONT)
     notifier.app_started()
 

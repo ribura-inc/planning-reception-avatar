@@ -110,41 +110,23 @@ class RemoteController:
     # ------------------------------------------------------------
     def check_google_login(self) -> tuple[bool, str]:
         """Googleログイン状態をチェックし、結果を返す（headless実行、自動クリーンアップ）."""
-        try:
-            meet_manager = MeetManager()
-            success, message = meet_manager.check_google_login()
-        except Exception as exc:  # noqa: BLE001
-            self._notifier.report_error(exc, "Googleログインチェック", {})
-            return False, "チェック中にエラーが発生しました"
-        else:
-            return success, message
+        meet_manager = MeetManager()
+        return meet_manager.check_google_login()
 
     def check_extension_installed(self) -> tuple[bool, str]:
         """拡張機能のインストール状態をチェックし、結果を返す（headless実行、自動クリーンアップ）."""
-        try:
-            meet_manager = MeetManager()
-            success, message = meet_manager.check_extension_installed()
-        except Exception as exc:  # noqa: BLE001
-            self._notifier.report_error(exc, "拡張機能チェック", {})
-            return False, "チェック中にエラーが発生しました"
-        else:
-            return success, message
+        meet_manager = MeetManager()
+        return meet_manager.check_extension_installed()
 
     def open_google_login_page(self) -> None:
         """Googleログインページを開く."""
-        try:
-            meet_manager = MeetManager()
-            meet_manager.open_google_login_page()
-        except Exception as exc:  # noqa: BLE001
-            self._notifier.report_error(exc, "Googleログインページ表示", {})
+        meet_manager = MeetManager()
+        meet_manager.open_google_login_page()
 
     def open_extension_page(self) -> None:
         """拡張機能ページを開く."""
-        try:
-            meet_manager = MeetManager()
-            meet_manager.open_extension_page()
-        except Exception as exc:  # noqa: BLE001
-            self._notifier.report_error(exc, "拡張機能ページ表示", {})
+        meet_manager = MeetManager()
+        meet_manager.open_extension_page()
 
     # ------------------------------------------------------------
     # セッション制御
@@ -161,7 +143,6 @@ class RemoteController:
             self._emit_error("")
             self._emit_status(AppStatus.CONNECTING, "接続準備中", f"接続先: {device_name}")
 
-            # デバイス名を解決しIPを取得（キャッシュ優先）
             self._emit_status(AppStatus.CONNECTING, "Meetを準備しています")
             meet_manager = MeetManager()
             meet_url = meet_manager.create_meet_space()
@@ -172,9 +153,9 @@ class RemoteController:
             if not client.connect():
                 msg = (
                     "フロントPCに接続できませんでした。\n\n"
-                    "以下をご確認ください：\n"
-                    "• フロントPCでシステムは起動済みですか？\n"
-                    "• フロントPC画面に「ネットワーク正常」と表示されていますか？\n"
+                    "以下をご確認ください:\n"
+                    "• フロントPCでシステムは起動済みですか?\n"
+                    "• フロントPC画面に「ネットワーク正常」と表示されていますか?\n"
                     "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
                 )
                 raise RuntimeError(msg)  # noqa: TRY301
@@ -183,8 +164,8 @@ class RemoteController:
             if not client.send_meet_url(meet_url):
                 msg = (
                     "Meet URLの送信に失敗しました。\n\n"
-                    "以下をご確認ください：\n"
-                    "• フロントPCとの通信が安定していますか？\n"
+                    "以下をご確認ください:\n"
+                    "• フロントPCとの通信が安定していますか?\n"
                     "• フロントPCでエラーが表示されていないか確認してください\n"
                     "• ネットワーク接続を確認してください\n\n"
                     "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
@@ -205,15 +186,17 @@ class RemoteController:
             self._meet_manager = meet_manager
 
             self._emit_status(AppStatus.CONNECTED, "接続しました", f"Meet URL: {meet_url}")
+            self._emit_error("")
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
+            # エラーを報告してUI更新、その後クリーンアップして再raise
             self._notifier.report_error(exc, "リモート接続開始", {"接続先": device_name})
             self._emit_status(AppStatus.ERROR, "接続に失敗しました")
             self._emit_error(str(exc))
             cleanup_webdriver()
             self._teardown_session()
-        else:
-            self._emit_error("")
+            # 想定外のエラーは上位に伝播（mainでキャッチされてSlack通知される）
+            raise
 
     def end_session(self) -> None:
         with self._session_lock:
@@ -225,9 +208,6 @@ class RemoteController:
             if self._client:
                 self._client.send_command(RemoteCommand.END_SESSION.value)
             self._notifier.disconnect_complete(self._current_device or "未指定")
-        except Exception as exc:  # noqa: BLE001
-            self._notifier.report_error(exc, "リモート切断", {"接続先": self._current_device})
-            self._emit_error(str(exc))
         finally:
             self._teardown_session()
             self._emit_status(AppStatus.IDLE, "待機中")

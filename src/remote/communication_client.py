@@ -6,31 +6,29 @@ import json
 import logging
 import socket
 import threading
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Self
 
+from src.config import Config
 from src.models.enums import MessageType
 from src.utils.tailscale_utils import TailscaleUtils
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
-class ClientConfig:
-    """クライアント接続設定。"""
-
-    host: str
-    port: int = 9999
-    timeout: float = 10.0
-
-
 class CommunicationClient:
     """長さプレフィックス付きTCP通信を扱う軽量ラッパー。"""
 
-    def __init__(self, host_or_device: str, port: int = 9999, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        host_or_device: str,
+        port: int = Config.Communication.PORT,
+        timeout: float = Config.Communication.TIMEOUT,
+    ) -> None:
         resolved = TailscaleUtils.resolve_device_name(host_or_device) or host_or_device
-        self.config = ClientConfig(host=resolved, port=port, timeout=timeout)
+        self.host = resolved
+        self.port = port
+        self.timeout = timeout
         self._socket: socket.socket | None = None
         self._heartbeat_thread: threading.Thread | None = None
         self._heartbeat_stop_event: threading.Event = threading.Event()
@@ -44,10 +42,10 @@ class CommunicationClient:
 
         try:
             sock = socket.create_connection(
-                (self.config.host, self.config.port),
-                timeout=self.config.timeout,
+                (self.host, self.port),
+                timeout=self.timeout,
             )
-            sock.settimeout(self.config.timeout)
+            sock.settimeout(self.timeout)
             self._socket = sock
             self._start_heartbeat()  # ハートビート開始
             return True  # noqa: TRY300
@@ -70,10 +68,13 @@ class CommunicationClient:
         logger.info("ハートビート送信開始")
 
     def _heartbeat_loop(self) -> None:
-        """定期的にハートビートを送信（20秒間隔）。"""
-        while not self._heartbeat_stop_event.wait(timeout=20.0):
+        """定期的にハートビートを送信し、失敗時はリトライする。"""
+        consecutive_failures = 0
+
+        while not self._heartbeat_stop_event.wait(timeout=Config.Communication.HEARTBEAT_INTERVAL):
             if not self._socket:
                 break
+
             try:
                 payload = {
                     "type": MessageType.HEARTBEAT.value,
@@ -90,10 +91,27 @@ class CommunicationClient:
                     if response_length > 0:
                         self._socket.recv(response_length)
 
+                # 成功時はカウンタリセット
+                consecutive_failures = 0
                 logger.debug("ハートビート送信成功")
+
             except OSError:
-                logger.warning("ハートビート送信失敗", exc_info=True)
-                break
+                consecutive_failures += 1
+                logger.warning(
+                    "ハートビート送信失敗 (%d/%d)",
+                    consecutive_failures,
+                    Config.Communication.HEARTBEAT_MAX_FAILURES,
+                    exc_info=True,
+                )
+
+                # 最大失敗回数に達したら接続を切断
+                if consecutive_failures >= Config.Communication.HEARTBEAT_MAX_FAILURES:
+                    logger.error(  # noqa: TRY400
+                        "ハートビート連続失敗により接続を切断します (失敗回数: %d)",
+                        consecutive_failures,
+                    )
+                    self._force_disconnect()
+                    break
 
     def _stop_heartbeat(self) -> None:
         """ハートビート送信スレッドを停止。"""
@@ -104,6 +122,18 @@ class CommunicationClient:
         self._heartbeat_thread.join(timeout=2.0)
         self._heartbeat_thread = None
         logger.info("ハートビート送信停止")
+
+    def _force_disconnect(self) -> None:
+        """ソケットを強制的にクローズ（ハートビートスレッドから呼び出される）。"""
+        if not self._socket:
+            return
+        try:
+            self._socket.close()
+        except OSError as exc:
+            logger.warning("ソケット強制切断エラー: %s", exc)
+        finally:
+            self._socket = None
+            logger.info("接続を強制切断しました")
 
     def disconnect(self) -> None:
         if not self._socket:

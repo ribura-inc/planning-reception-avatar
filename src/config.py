@@ -61,6 +61,18 @@ class Config:
         LAUNCH_WAIT: float = 3.0  # VTube Studio起動後の待機時間
         STATUS_CHECK_INTERVAL: float = 1.0  # ステータスチェック間隔
 
+    class Communication:
+        """TCP通信関連の設定"""
+
+        # 接続設定
+        HOST: str = "localhost"  # デフォルトホスト
+        PORT: int = 9999  # デフォルトポート
+        TIMEOUT: float = 10.0  # ソケットタイムアウト（秒）
+
+        # ハートビート設定
+        HEARTBEAT_INTERVAL: float = 20.0  # ハートビート送信間隔（秒）
+        HEARTBEAT_MAX_FAILURES: int = 3  # 最大連続失敗回数
+
     CONFIG_DIR: Path = Path.home() / ".planning-reception-avatar"
 
 

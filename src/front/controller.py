@@ -201,9 +201,9 @@ class FrontController:
             if not self._participant.join_meeting(meet_url):
                 msg = (
                     "Google Meetへの参加に失敗しました。\n\n"
-                    "以下をご確認ください：\n"
-                    "• ブラウザの権限設定でカメラ・マイクは許可されていますか？\n"
-                    "• インターネット接続は安定していますか？\n"
+                    "以下をご確認ください:\n"
+                    "• ブラウザの権限設定でカメラ・マイクは許可されていますか?\n"
+                    "• インターネット接続は安定していますか?\n"
                     "上記を確認しても解決しない場合は、システム管理者にお問い合わせください。"
                 )
                 raise RuntimeError(msg)  # noqa: TRY301
@@ -214,13 +214,15 @@ class FrontController:
             # 入室完了をSlack通知
             if self._current_remote_label and meet_url:
                 self._notifier.room_entry_complete(meet_url)
-        except Exception as exc:  # noqa: BLE001
+            self._emit_error("")
+        except Exception as exc:
+            # エラーを報告してUI更新、その後クリーンアップして再raise
             self._notifier.report_error(exc, "フロントMeet参加", {"Meet URL": meet_url})
             self._emit_status(AppStatus.ERROR, "Meetへの参加に失敗しました")
             self._emit_error(str(exc))
             self._teardown_session()
-        else:
-            self._emit_error("")
+            # 想定外のエラーは上位に伝播（mainでキャッチされてSlack通知される）
+            raise
 
     def _teardown_session(self) -> None:
         with self._session_lock:
