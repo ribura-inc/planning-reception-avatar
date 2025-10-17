@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.models.enums import MessageType
+from src.utils.slack import SessionLocation, notify_error
 from src.utils.tailscale_utils import TailscaleUtils
 
 # ロギング設定
@@ -72,6 +73,16 @@ class CommunicationServer:
             if not is_valid:
                 logger.error(f"Tailscale設定エラー: {message}")
                 logger.error("TAILSCALE_SETUP.mdを参照してTailscaleを設定してください")
+                # Slack通知を送信
+                notify_error(
+                    error=Exception(f"Tailscale設定エラー: {message}"),
+                    context="Tailscale設定エラー",
+                    additional_info={
+                        "エラーメッセージ": message,
+                        "対処方法": "TAILSCALE_SETUP.mdを参照してTailscaleを設定してください",
+                    },
+                    location=SessionLocation.FRONT,
+                )
                 return False
 
             logger.info(f"Tailscale確認完了: {message}")

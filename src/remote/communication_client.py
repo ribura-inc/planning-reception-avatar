@@ -7,11 +7,15 @@ import logging
 import socket
 import threading
 from datetime import UTC, datetime
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from src.config import Config
 from src.models.enums import MessageType
+from src.utils.slack import SessionLocation, notify_error
 from src.utils.tailscale_utils import TailscaleUtils
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +36,15 @@ class CommunicationClient:
         self._socket: socket.socket | None = None
         self._heartbeat_thread: threading.Thread | None = None
         self._heartbeat_stop_event: threading.Event = threading.Event()
+        self._on_connection_lost: Callable[[], None] | None = None
+
+    def set_connection_lost_callback(self, callback: Callable[[], None]) -> None:
+        """接続喪失時に呼び出されるコールバックを設定
+
+        Args:
+            callback: 接続が失われた際に呼び出される関数
+        """
+        self._on_connection_lost = callback
 
     # ------------------------------------------------------------------
     # 接続系ヘルパー
@@ -49,8 +62,17 @@ class CommunicationClient:
             self._socket = sock
             self._start_heartbeat()  # ハートビート開始
             return True  # noqa: TRY300
-        except OSError:
+        except OSError as e:
             logger.exception("フロントPCへの接続に失敗しました")
+            notify_error(
+                error=e,
+                context="フロントPCへの接続失敗",
+                additional_info={
+                    "ホスト": self.host,
+                    "ポート": str(self.port),
+                },
+                location=SessionLocation.REMOTE,
+            )
             self._socket = None
             return False
 
@@ -110,7 +132,24 @@ class CommunicationClient:
                         "ハートビート連続失敗により接続を切断します (失敗回数: %d)",
                         consecutive_failures,
                     )
+                    # Slack通知を送信
+                    notify_error(
+                        error=Exception("ハートビート連続失敗"),
+                        context="フロントPCとの接続維持失敗",
+                        additional_info={
+                            "失敗回数": f"{consecutive_failures}回",
+                            "最大失敗回数": f"{Config.Communication.HEARTBEAT_MAX_FAILURES}回",
+                            "ホスト": self.host,
+                        },
+                        location=SessionLocation.REMOTE,
+                    )
                     self._force_disconnect()
+                    # 接続喪失コールバックを呼び出す
+                    if self._on_connection_lost:
+                        try:
+                            self._on_connection_lost()
+                        except Exception:
+                            logger.exception("接続喪失コールバック実行エラー")
                     break
 
     def _stop_heartbeat(self) -> None:

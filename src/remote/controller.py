@@ -172,6 +172,9 @@ class RemoteController:
                 )
                 raise RuntimeError(msg)  # noqa: TRY301
 
+            # 接続喪失時のコールバックを設定
+            client.set_connection_lost_callback(self._handle_connection_lost)
+
             self._emit_status(AppStatus.CONNECTING, "ブラウザを準備しています")
             meet_manager.setup_browser()
             meet_manager.set_chrome_exit_callback(self._handle_chrome_exit)
@@ -224,6 +227,22 @@ class RemoteController:
         self._emit_status(AppStatus.DISCONNECTING, "Chromeを終了しました")
         if self._current_device:
             self._notifier.disconnect_complete(self._current_device)
+        self._teardown_session()
+        self._emit_status(AppStatus.IDLE, "待機中")
+
+    def _handle_connection_lost(self) -> None:
+        """ハートビート失敗による接続喪失時の処理"""
+        self._emit_status(AppStatus.ERROR, "フロントPCとの接続が切断されました")
+        self._emit_error(
+            "フロントPCとの接続が失われました。\n\n"
+            "以下をご確認ください：\n"
+            "• フロントPCのネットワーク接続は正常ですか？\n"
+            "• フロントPCでシステムがまだ起動していますか？\n"
+            "• フロントPCの画面にエラーが表示されていませんか？\n\n"
+            "上記を確認後、再度接続してください。\n"
+            "問題が解決しない場合は、システム管理者にお問い合わせください。",
+        )
+        # クリーンアップを実行
         self._teardown_session()
         self._emit_status(AppStatus.IDLE, "待機中")
 

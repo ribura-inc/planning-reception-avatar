@@ -16,6 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from src.config import Config
 from src.utils.selenium_utils import retry_operation, wait_for_element_safely
+from src.utils.slack import SessionLocation
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ class MeetParticipant:
                 return False
 
         # リトライ機能付きで実行
-        return retry_operation(_attempt_join, "ゲスト参加")
+        return retry_operation(_attempt_join, "ゲスト参加", location=SessionLocation.FRONT)
 
     def _close_security_dialog(self) -> None:
         """入室後のセキュリティ確認ダイアログを閉じる"""

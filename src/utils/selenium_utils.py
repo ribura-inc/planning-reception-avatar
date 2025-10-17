@@ -15,6 +15,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
 from src.config import Config
+from src.utils.slack import SessionLocation, notify_error
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ def retry_operation(
     operation_name: str,
     max_attempts: int = Config.GoogleMeet.RETRY_MAX_ATTEMPTS,
     wait_seconds: float = Config.GoogleMeet.RETRY_WAIT_SECONDS,
+    location: SessionLocation | None = None,
 ) -> bool:
     """リトライロジック付きで操作を実行
 
@@ -86,10 +88,13 @@ def retry_operation(
         operation_name: 操作名（ログ出力用）
         max_attempts: 最大リトライ回数
         wait_seconds: リトライ間隔（秒）
+        location: セッション実行場所（front/remote）
 
     Returns:
         bool: 操作が成功したかどうか
     """
+    last_exception = None
+
     for attempt in range(1, max_attempts + 1):
         try:
             logger.info(f"{operation_name}を試行中... (試行 {attempt}/{max_attempts})")
@@ -97,7 +102,8 @@ def retry_operation(
                 logger.info(f"{operation_name}が成功しました (試行 {attempt}/{max_attempts})")
                 return True
             logger.warning(f"{operation_name}が失敗しました (試行 {attempt}/{max_attempts})")
-        except Exception:
+        except Exception as e:
+            last_exception = e
             logger.exception(f"{operation_name}中にエラーが発生しました (試行 {attempt}/{max_attempts})")
 
         # 最後の試行でなければ待機
@@ -105,5 +111,18 @@ def retry_operation(
             logger.info(f"{wait_seconds}秒後にリトライします...")
             time.sleep(wait_seconds)
 
+    # 最大リトライ回数に達した場合、Slack通知を送信
     logger.error(f"{operation_name}が{max_attempts}回の試行後も失敗しました")
+
+    error_to_notify = last_exception if last_exception else Exception(f"{operation_name}が失敗しました")
+    notify_error(
+        error=error_to_notify,
+        context=f"{operation_name}（最大リトライ回数到達）",
+        additional_info={
+            "試行回数": f"{max_attempts}回",
+            "操作名": operation_name,
+        },
+        location=location,
+    )
+
     return False

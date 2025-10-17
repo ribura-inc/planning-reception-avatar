@@ -21,6 +21,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from src.config import Config
 from src.utils.selenium_utils import retry_operation, wait_for_element_safely
+from src.utils.slack import SessionLocation, notify_error
 
 from .webdriver_manager import (
     cleanup_webdriver,
@@ -62,8 +63,14 @@ class MeetManager:
             request = meet_v2.CreateSpaceRequest()
             response = client.create_space(request=request)
             return response.meeting_uri  # noqa: TRY300
-        except Exception:
+        except Exception as e:
             logger.exception("Meetスペースの作成に失敗しました")
+            notify_error(
+                error=e,
+                context="Meetスペース作成失敗",
+                additional_info={},
+                location=SessionLocation.REMOTE,
+            )
             raise
 
     def _authenticate(self) -> None:
@@ -104,8 +111,14 @@ class MeetManager:
             # 共有WebDriverインスタンスを取得
             self.driver = get_webdriver(headless=False)
             logger.info("共有WebDriverインスタンスを取得しました")
-        except Exception:
+        except Exception as e:
             logger.exception("共有WebDriverの取得に失敗")
+            notify_error(
+                error=e,
+                context="WebDriver取得失敗",
+                additional_info={},
+                location=SessionLocation.REMOTE,
+            )
             raise
 
     def join_as_host(self, meet_url: str) -> None:
@@ -134,7 +147,7 @@ class MeetManager:
             return False
 
         # リトライ機能付きで実行
-        if not retry_operation(_attempt_join, "ホスト参加"):
+        if not retry_operation(_attempt_join, "ホスト参加", location=SessionLocation.REMOTE):
             msg = "参加ボタンが見つかりませんでした"
             raise TimeoutException(msg)
 
@@ -168,7 +181,7 @@ class MeetManager:
             return False
 
         # リトライ機能付きで実行（失敗してもwarningで続行）
-        retry_operation(_attempt_enable_auto_admit, "Auto-Admit有効化")
+        retry_operation(_attempt_enable_auto_admit, "Auto-Admit有効化", location=SessionLocation.REMOTE)
 
     def is_session_active(self) -> bool:
         """Chromeとセッションが有効かどうかを確認"""
