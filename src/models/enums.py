@@ -38,8 +38,6 @@ class ProcessName(str, Enum):
 
     CHROME = "chrome"
     CHROME_EXE = "chrome.exe"
-    VTUBE_STUDIO = "VTube Studio"
-    VTUBE_STUDIO_EXE = "VTube Studio.exe"
 
     @classmethod
     def get_chrome_process(cls, platform: Platform) -> "ProcessName":

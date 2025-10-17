@@ -71,7 +71,7 @@ class Config:
 
         # ハートビート設定
         HEARTBEAT_INTERVAL: float = 20.0  # ハートビート送信間隔（秒）
-        HEARTBEAT_MAX_FAILURES: int = 3  # 最大連続失敗回数
+        HEARTBEAT_MAX_FAILURES: int = 2  # 最大連続失敗回数
 
     CONFIG_DIR: Path = Path.home() / ".planning-reception-avatar"
 

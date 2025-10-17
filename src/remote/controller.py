@@ -14,6 +14,7 @@ from src.remote.communication_client import CommunicationClient
 from src.remote.meet_manager import MeetManager
 from src.remote.webdriver_manager import cleanup_webdriver
 from src.utils.network_utils import diagnose_network
+from src.utils.vtube_studio_utils import check_and_setup_vtube_studio
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -134,6 +135,28 @@ class RemoteController:
         try:
             self._emit_error("")
             self._emit_status(AppStatus.CONNECTING, "接続準備中", f"接続先: {device_name}")
+
+            self._emit_status(AppStatus.CHECKING, "VTube Studioを確認しています")
+            vtube_ok, vtube_message = check_and_setup_vtube_studio()
+            if not vtube_ok:
+                msg = (
+                    "VTube Studioの起動に失敗しました。\n\n"
+                    "VTube Studioを手動で起動してから再度お試しください。\n"
+                    f"詳細: {vtube_message}"
+                )
+                raise RuntimeError(msg)  # noqa: TRY301
+
+            vtube_detail = "VTube Studioは既に起動しています"
+            if isinstance(vtube_message, str) and vtube_message.lower().startswith(
+                "vtube studio launched",
+            ):
+                vtube_detail = "VTube Studioを起動しました"
+
+            self._emit_status(
+                AppStatus.CONNECTING,
+                "VTube Studioの準備が完了しました",
+                vtube_detail,
+            )
 
             self._emit_status(AppStatus.CONNECTING, "Meetを準備しています")
             meet_manager = MeetManager()
