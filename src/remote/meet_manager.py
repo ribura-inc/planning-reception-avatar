@@ -17,10 +17,9 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.support.ui import WebDriverWait
 
 from src.config import Config
+from src.utils.selenium_utils import retry_operation, wait_for_element_safely
 
 from .webdriver_manager import (
     cleanup_webdriver,
@@ -116,20 +115,25 @@ class MeetManager:
 
         self.driver.get(meet_url)
 
-        # 参加ボタンをクリック
-        join_button = None
-        try:
-            join_button = WebDriverWait(self.driver, self.BUTTON_WAIT_TIMEOUT).until(
-                expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.JOIN_BUTTON_XPATH),
-                ),
+        def _attempt_join() -> bool:
+            """参加試行の実装"""
+            # 参加ボタンを安全に待機
+            join_button = wait_for_element_safely(
+                self.driver,
+                By.XPATH,
+                Config.GoogleMeet.JOIN_BUTTON_XPATH,
             )
-        except TimeoutException:
-            join_button = None
 
-        if join_button:
-            join_button.click()
-        else:
+            if join_button:
+                join_button.click()
+                logger.info("ホストとして参加ボタンをクリックしました")
+                return True
+
+            logger.error("参加ボタンが見つかりませんでした")
+            return False
+
+        # リトライ機能付きで実行
+        if not retry_operation(_attempt_join, "ホスト参加"):
             msg = "参加ボタンが見つかりませんでした"
             raise TimeoutException(msg)
 
@@ -141,28 +145,29 @@ class MeetManager:
 
         logger.info("Auto-Admit機能を有効化中...")
 
-        auto_admit_button = None
-        try:
-            auto_admit_button = WebDriverWait(
+        def _attempt_enable_auto_admit() -> bool:
+            """Auto-Admit有効化試行の実装"""
+            # Auto-Admitボタンを安全に待機
+            auto_admit_button = wait_for_element_safely(
                 self.driver,
-                self.BUTTON_WAIT_TIMEOUT,
-            ).until(
-                expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.AUTO_ADMIT_BUTTON_XPATH),
-                ),
+                By.XPATH,
+                Config.GoogleMeet.AUTO_ADMIT_BUTTON_XPATH,
             )
-        except TimeoutException:
-            auto_admit_button = None
 
-        if auto_admit_button:
-            is_pressed = auto_admit_button.get_attribute("aria-pressed") == "true"
-            if not is_pressed:
-                auto_admit_button.click()
-                logger.info("Auto-Admit機能を有効にしました")
-            else:
-                logger.info("Auto-Admit機能は既に有効です")
-        else:
+            if auto_admit_button:
+                is_pressed = auto_admit_button.get_attribute("aria-pressed") == "true"
+                if not is_pressed:
+                    auto_admit_button.click()
+                    logger.info("Auto-Admit機能を有効にしました")
+                else:
+                    logger.info("Auto-Admit機能は既に有効です")
+                return True
+
             logger.warning("Auto-Admitボタンが見つかりませんでした")
+            return False
+
+        # リトライ機能付きで実行（失敗してもwarningで続行）
+        retry_operation(_attempt_enable_auto_admit, "Auto-Admit有効化")
 
     def is_session_active(self) -> bool:
         """Chromeとセッションが有効かどうかを確認"""

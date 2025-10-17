@@ -38,6 +38,10 @@ class Config:
         BUTTON_WAIT_TIMEOUT: int = 15  # ボタン検出のタイムアウト
         GEMINI_POPUP_WAIT: int = 90  # Geminiポップアップ最大待機時間
 
+        # リトライ設定
+        RETRY_MAX_ATTEMPTS: int = 3  # 最大リトライ回数
+        RETRY_WAIT_SECONDS: float = 3.0  # リトライ間隔（秒）
+
         # ナビゲーション関連テキスト
         HOME_BUTTON_TEXT: str = "ホーム画面に戻る"
 

@@ -15,6 +15,7 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
 from src.config import Config
+from src.utils.selenium_utils import retry_operation, wait_for_element_safely
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -106,33 +107,48 @@ class MeetParticipant:
 
     def _join_as_guest(self) -> bool:
         """ゲストとして参加"""
-        try:
-            logger.info(f"ゲストとして参加: {self.display_name}")
 
-            # 名前入力
-            if not self.driver:
+        def _attempt_join() -> bool:
+            """参加試行の実装"""
+            try:
+                logger.info(f"ゲストとして参加: {self.display_name}")
+
+                if not self.driver:
+                    return False
+
+                # 名前入力フィールドを安全に待機
+                name_input = wait_for_element_safely(
+                    self.driver,
+                    By.XPATH,
+                    Config.GoogleMeet.NAME_INPUT_XPATH,
+                )
+                if not name_input:
+                    logger.error("名前入力フィールドが見つかりませんでした")
+                    return False
+
+                name_input.clear()
+                name_input.send_keys(self.display_name)
+                logger.info(f"表示名を入力: {self.display_name}")
+
+                # 参加リクエストボタンを安全に待機
+                join_button = wait_for_element_safely(
+                    self.driver,
+                    By.XPATH,
+                    Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH,
+                )
+                if not join_button:
+                    logger.error("参加リクエストボタンが見つかりませんでした")
+                    return False
+
+                join_button.click()
+                logger.info("参加をリクエストしました")
+                return True  # noqa: TRY300
+            except Exception:
+                logger.exception("ゲスト参加エラー")
                 return False
-            name_input = WebDriverWait(self.driver, Config.GoogleMeet.BUTTON_WAIT_TIMEOUT).until(
-                expected_conditions.presence_of_element_located(
-                    (By.XPATH, Config.GoogleMeet.NAME_INPUT_XPATH),
-                ),
-            )
-            name_input.clear()
-            name_input.send_keys(self.display_name)
-            logger.info(f"表示名を入力: {self.display_name}")
 
-            # 参加リクエスト
-            join_button = WebDriverWait(self.driver, Config.GoogleMeet.BUTTON_WAIT_TIMEOUT).until(
-                expected_conditions.element_to_be_clickable(
-                    (By.XPATH, Config.GoogleMeet.REQUEST_JOIN_BUTTON_XPATH),
-                ),
-            )
-            join_button.click()
-            logger.info("参加をリクエストしました")
-            return True  # noqa: TRY300
-        except Exception:
-            logger.exception("ゲスト参加エラー")
-            return False
+        # リトライ機能付きで実行
+        return retry_operation(_attempt_join, "ゲスト参加")
 
     def _close_security_dialog(self) -> None:
         """入室後のセキュリティ確認ダイアログを閉じる"""
