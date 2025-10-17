@@ -29,6 +29,8 @@ class RemoteUI:
         self._open_extension_page_handler: Callable[[], None] | None = None
 
         self._device_options: dict[str, str] = {}
+        self._current_status: AppStatus = AppStatus.IDLE
+        self._precheck_in_progress = False
 
         # `build`内で初期化する各UI要素
         self.status_label: ft.Text | None = None
@@ -92,6 +94,13 @@ class RemoteUI:
             return
         threading.Thread(target=handler, args=args, daemon=True).start()
 
+    def _set_precheck_busy(self, busy: bool) -> None:  # noqa: FBT001
+        """Precheck処理の実行中状態を更新し、ボタン状態を反映する。"""
+        self._precheck_in_progress = busy
+        self._update_button_states(self._current_status)
+        if self.page:
+            self.page.update()
+
     def _update_label(
         self,
         label: ft.Text | None,
@@ -133,18 +142,30 @@ class RemoteUI:
 
         elif status in {AppStatus.IDLE, AppStatus.ERROR}:
             # 待機中・エラー時は接続ボタンを有効化（デバイスがある場合）
-            if self.connect_button:
-                self.connect_button.disabled = not self._device_options
+            self._set_disabled(
+                self.connect_button,
+                self._precheck_in_progress or not self._device_options,
+            )
             self._set_disabled(self.disconnect_button, True)
             self._set_disabled(self.device_dropdown, False)
             # プレチェックボタンを有効化
-            self._set_disabled(self.check_google_button, False)
-            self._set_disabled(self.check_extension_button, False)
+            self._set_disabled(self.check_google_button, self._precheck_in_progress)
+            self._set_disabled(self.check_extension_button, self._precheck_in_progress)
 
         elif status == AppStatus.SHUTTING_DOWN:
             # 終了中はすべてのボタンを無効化
             self._set_disabled(self.connect_button, True)
             self._set_disabled(self.disconnect_button, True)
+            self._set_disabled(self.check_google_button, True)
+            self._set_disabled(self.check_extension_button, True)
+
+        # プレチェック実行中は常にボタンを無効化
+        if self._precheck_in_progress and status not in {
+            AppStatus.CONNECTING,
+            AppStatus.DISCONNECTING,
+            AppStatus.CONNECTED,
+            AppStatus.SHUTTING_DOWN,
+        }:
             self._set_disabled(self.check_google_button, True)
             self._set_disabled(self.check_extension_button, True)
 
@@ -174,6 +195,7 @@ class RemoteUI:
             self.status_label.color = ft.Colors.BLACK
 
         # ボタンの有効/無効制御
+        self._current_status = payload.status
         self._update_button_states(payload.status)
 
         self.page.update()
@@ -205,11 +227,13 @@ class RemoteUI:
             if self.device_dropdown.value not in devices:
                 self.device_dropdown.value = options[0].key
             self._set_disabled(self.device_dropdown, False)
-            self._set_disabled(self.connect_button, False)
         else:
             self.device_dropdown.value = None
             self._set_disabled(self.device_dropdown, True)
-            self._set_disabled(self.connect_button, True)
+        self._set_disabled(
+            self.connect_button,
+            self._precheck_in_progress or not options,
+        )
         self.page.update()
 
     def show_error(self, message: str) -> None:
@@ -403,11 +427,20 @@ class RemoteUI:
         if not handler or not label or not self.page:
             return
 
+        self._set_precheck_busy(True)
+
         def _execute_check() -> None:
             if not self.page:
+                self._set_precheck_busy(False)
                 return
             self._update_label(label, "確認中...", color=ft.Colors.BLUE)
             self.page.update()
-            self._update_precheck_result(label, handler())
+            result: tuple[bool, str] | None = None
+            try:
+                result = handler()
+            finally:
+                self._set_precheck_busy(False)
+            if result is not None:
+                self._update_precheck_result(label, result)
 
         self._run_async(_execute_check)
