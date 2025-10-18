@@ -231,7 +231,6 @@ class RemoteController:
             self._emit_status(AppStatus.IDLE, "待機中")
 
     def shutdown(self) -> None:
-        self._emit_status(AppStatus.SHUTTING_DOWN, "終了処理中")
         self._teardown_session()
 
     # ------------------------------------------------------------
