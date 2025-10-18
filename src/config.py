@@ -58,7 +58,7 @@ class Config:
         """VTube Studio関連の設定"""
 
         # 待機時間設定（秒）
-        LAUNCH_WAIT: float = 3.0  # VTube Studio起動後の待機時間
+        LAUNCH_WAIT: float = 5.0  # VTube Studio起動後の待機時間
         STATUS_CHECK_INTERVAL: float = 1.0  # ステータスチェック間隔
 
     class Communication:
